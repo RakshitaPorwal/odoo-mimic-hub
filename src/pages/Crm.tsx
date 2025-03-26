@@ -26,7 +26,7 @@ import {
 import { 
   ChartBar, 
   Coins, 
-  HandShake, 
+  Handshake, 
   Plus, 
   Search, 
   User, 
@@ -154,7 +154,7 @@ const Crm = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Open Deals</CardTitle>
-            <HandShake className="h-4 w-4 text-muted-foreground" />
+            <Handshake className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">38</div>
