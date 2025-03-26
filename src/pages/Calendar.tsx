@@ -1,472 +1,660 @@
-
 import React, { useState } from "react";
-import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, isSameMonth, parseISO } from "date-fns";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { 
-  ChevronLeft, 
-  ChevronRight, 
+  Search, 
   Plus,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   User,
-  Calendar as CalendarIcon
+  Users,
+  Map, // Changed from MapPin to Map
+  MoreVertical,
+  Check,
+  X,
+  Filter
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
-// Sample event data
-const events = [
+interface Event {
+  id: number;
+  title: string;
+  start: Date;
+  end: Date;
+  location?: string;
+  description?: string;
+  attendees?: string[];
+  tags?: string[];
+}
+
+interface EventDetailsDialogProps {
+  event: Event;
+  onClose: () => void;
+}
+
+const eventsData: Event[] = [
   {
     id: 1,
     title: "Team Meeting",
-    date: "2023-07-15T10:00:00",
-    endDate: "2023-07-15T11:30:00",
-    description: "Weekly team sync",
-    attendees: ["John Doe", "Jane Smith", "Robert Johnson"],
+    start: new Date("2023-08-15T10:00:00"),
+    end: new Date("2023-08-15T11:00:00"),
     location: "Conference Room A",
-    color: "blue"
+    description: "Discuss project progress and next steps.",
+    attendees: ["John Doe", "Jane Smith", "Alice Johnson"],
+    tags: ["team", "meeting"]
   },
   {
     id: 2,
-    title: "Project Kickoff",
-    date: "2023-07-15T14:00:00",
-    endDate: "2023-07-15T15:00:00",
-    description: "New project kickoff meeting",
-    attendees: ["John Doe", "Emily Davis", "Michael Wilson"],
-    location: "Meeting Room B",
-    color: "green"
+    title: "Client Presentation",
+    start: new Date("2023-08-16T14:00:00"),
+    end: new Date("2023-08-16T15:30:00"),
+    location: "Online",
+    description: "Present the new product features to the client.",
+    attendees: ["John Doe", "Client Contact"],
+    tags: ["sales", "presentation"]
   },
   {
     id: 3,
-    title: "Client Call",
-    date: "2023-07-17T11:00:00",
-    endDate: "2023-07-17T12:00:00",
-    description: "Monthly status update",
-    attendees: ["John Doe", "Sarah Brown"],
-    location: "Zoom",
-    color: "purple"
+    title: "Workshop: React Best Practices",
+    start: new Date("2023-08-18T09:00:00"),
+    end: new Date("2023-08-18T17:00:00"),
+    location: "Training Center",
+    description: "Hands-on workshop on React best practices.",
+    attendees: ["All Developers"],
+    tags: ["training", "react"]
   },
   {
     id: 4,
     title: "Product Demo",
-    date: "2023-07-18T15:30:00",
-    endDate: "2023-07-18T16:30:00",
-    description: "Demo of new features",
-    attendees: ["Jane Smith", "Emily Davis", "All stakeholders"],
-    location: "Main Hall",
-    color: "orange"
+    start: new Date("2023-08-20T11:00:00"),
+    end: new Date("2023-08-20T12:00:00"),
+    location: "Showroom",
+    description: "Demonstrate the latest product features.",
+    attendees: ["Sales Team", "Marketing Team"],
+    tags: ["product", "demo"]
   },
   {
     id: 5,
-    title: "Training Session",
-    date: "2023-07-20T09:00:00",
-    endDate: "2023-07-20T12:00:00",
-    description: "New tool training",
-    attendees: ["All team members"],
-    location: "Training Room",
-    color: "red"
+    title: "One-on-One Meeting",
+    start: new Date("2023-08-21T15:00:00"),
+    end: new Date("2023-08-21T16:00:00"),
+    location: "Manager's Office",
+    description: "Discuss performance and career goals.",
+    attendees: ["Employee", "Manager"],
+    tags: ["one-on-one", "meeting"]
+  },
+  {
+    id: 6,
+    title: "Team Lunch",
+    start: new Date("2023-08-22T12:00:00"),
+    end: new Date("2023-08-22T13:00:00"),
+    location: "Local Restaurant",
+    description: "Casual lunch with the team.",
+    attendees: ["All Team Members"],
+    tags: ["team", "social"]
+  },
+  {
+    id: 7,
+    title: "Code Review Session",
+    start: new Date("2023-08-23T16:00:00"),
+    end: new Date("2023-08-23T17:00:00"),
+    location: "Developer's Corner",
+    description: "Review the latest code changes and provide feedback.",
+    attendees: ["Developers"],
+    tags: ["code review", "development"]
+  },
+  {
+    id: 8,
+    title: "Project Planning Meeting",
+    start: new Date("2023-08-24T10:00:00"),
+    end: new Date("2023-08-24T11:30:00"),
+    location: "Project Room",
+    description: "Plan the next phase of the project.",
+    attendees: ["Project Team"],
+    tags: ["project", "planning"]
+  },
+  {
+    id: 9,
+    title: "Training Session: New Hires",
+    start: new Date("2023-08-25T14:00:00"),
+    end: new Date("2023-08-25T16:00:00"),
+    location: "Training Room B",
+    description: "Onboarding session for new employees.",
+    attendees: ["New Hires"],
+    tags: ["training", "onboarding"]
+  },
+  {
+    id: 10,
+    title: "End of Month Review",
+    start: new Date("2023-08-28T15:00:00"),
+    end: new Date("2023-08-28T16:00:00"),
+    location: "Board Room",
+    description: "Review the achievements and challenges of the month.",
+    attendees: ["Management Team"],
+    tags: ["review", "management"]
+  },
+  {
+    id: 11,
+    title: "Client Meeting",
+    start: new Date("2023-09-01T11:00:00"),
+    end: new Date("2023-09-01T12:00:00"),
+    location: "Client's Office",
+    description: "Discuss project requirements and timeline.",
+    attendees: ["Project Team", "Client Representatives"],
+    tags: ["client", "meeting"]
+  },
+  {
+    id: 12,
+    title: "Product Launch",
+    start: new Date("2023-09-05T18:00:00"),
+    end: new Date("2023-09-05T20:00:00"),
+    location: "Auditorium",
+    description: "Launch the new product to the public.",
+    attendees: ["All Employees", "Media", "Customers"],
+    tags: ["product", "launch"]
   }
 ];
 
-// Make today's date adjustable for demo purposes
-const adjustDate = (date: Date) => {
-  const today = new Date();
-  return new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate() + date.getDate() - new Date().getDate()
-  );
+const formatDate = (date: Date): string => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+  const year = date.getFullYear();
+  return `${year}-${month}-${day}`;
 };
 
-const eventsWithAdjustedDates = events.map(event => ({
-  ...event,
-  date: format(adjustDate(parseISO(event.date)), "yyyy-MM-dd'T'HH:mm:ss"),
-  endDate: format(adjustDate(parseISO(event.endDate)), "yyyy-MM-dd'T'HH:mm:ss")
-}));
+const formatEventDate = (start: Date, end: Date): string => {
+  const startDate = new Date(start);
+  const endDate = new Date(end);
 
-// Calendar page component
-const CalendarPage = () => {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [currentView, setCurrentView] = useState("month");
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
-  
-  // Get today's events
-  const todayEvents = eventsWithAdjustedDates.filter(event => 
-    isSameDay(parseISO(event.date), new Date())
-  );
-  
-  // Get selected date's events
-  const selectedDateEvents = eventsWithAdjustedDates.filter(event => 
-    isSameDay(parseISO(event.date), selectedDate)
-  );
-  
-  // Get current week
-  const startOfCurrentWeek = startOfWeek(selectedDate, { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfCurrentWeek, i));
-  
-  // Navigate to previous/next week
-  const goToPreviousWeek = () => setSelectedDate(subWeeks(selectedDate, 1));
-  const goToNextWeek = () => setSelectedDate(addWeeks(selectedDate, 1));
-  
-  // Week view time slots
-  const timeSlots = Array.from({ length: 12 }, (_, i) => i + 8); // 8 AM to 7 PM
+  const startDay = startDate.getDate();
+  const startMonth = startDate.toLocaleString('default', { month: 'short' });
+  const endDay = endDate.getDate();
+  const endMonth = endDate.toLocaleString('default', { month: 'short' });
 
-  // Format date for display
-  const formatEventTime = (dateString: string) => {
-    return format(parseISO(dateString), "h:mm a");
+  if (startDate.toDateString() === endDate.toDateString()) {
+    return `${startMonth} ${startDay}`;
+  } else {
+    return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
+  }
+};
+
+const formatEventTime = (start: Date, end: Date): string => {
+  const startTime = new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const endTime = new Date(end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return `${startTime} - ${endTime}`;
+};
+
+const Calendar = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedView, setSelectedView] = useState("month");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [isCreateEventDialogOpen, setIsCreateEventDialogOpen] = useState(false);
+  const [isEventDetailsDialogOpen, setIsEventDetailsDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [events, setEvents] = useState<Event[]>(eventsData);
+
+  const openCreateEventDialog = () => setIsCreateEventDialogOpen(true);
+  const closeCreateEventDialog = () => setIsCreateEventDialogOpen(false);
+
+  const openEventDetailsDialog = (event: Event) => {
+    setSelectedEvent(event);
+    setIsEventDetailsDialogOpen(true);
   };
 
-  // Generate an array of days for the month view
-  const getDaysInMonth = (date: Date) => {
+  const closeEventDetailsDialog = () => {
+    setIsEventDetailsDialogOpen(false);
+    setSelectedEvent(null);
+  };
+
+  const handleDateChange = (date: Date) => {
+    setSelectedDate(date);
+  };
+
+  const handleViewChange = (view: string) => {
+    setSelectedView(view);
+  };
+
+  const filteredEvents = events.filter(event =>
+    event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (event.location && event.location.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (event.attendees && event.attendees.some(attendee => attendee.toLowerCase().includes(searchQuery.toLowerCase()))) ||
+    (event.tags && event.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
+  );
+
+  const getDaysInMonth = (date: Date): number => {
     const year = date.getFullYear();
     const month = date.getMonth();
-    const firstDayOfMonth = new Date(year, month, 1);
-    const lastDayOfMonth = new Date(year, month + 1, 0);
-    
-    // Get the day of the week for the first day (0 = Sunday, 1 = Monday, etc.)
-    const firstDayOfWeek = firstDayOfMonth.getDay();
-    
-    // Create an array to hold all the days we need to display
-    const daysArray = [];
-    
-    // Add days from the previous month to fill the first row
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
-    for (let i = firstDayOfWeek - 1; i >= 0; i--) {
-      daysArray.push({
-        date: new Date(year, month - 1, prevMonthLastDay - i),
-        isCurrentMonth: false
-      });
-    }
-    
-    // Add all days of the current month
-    for (let day = 1; day <= lastDayOfMonth.getDate(); day++) {
-      daysArray.push({
-        date: new Date(year, month, day),
-        isCurrentMonth: true
-      });
-    }
-    
-    // Add days from the next month to complete the grid (6 rows x 7 days = 42 cells)
-    const daysNeededFromNextMonth = 42 - daysArray.length;
-    for (let day = 1; day <= daysNeededFromNextMonth; day++) {
-      daysArray.push({
-        date: new Date(year, month + 1, day),
-        isCurrentMonth: false
-      });
-    }
-    
-    return daysArray;
+    return new Date(year, month + 1, 0).getDate();
   };
 
-  const daysInMonth = getDaysInMonth(selectedDate);
-  
-  // Get events for a specific day
-  const getEventsForDay = (date: Date) => {
-    return eventsWithAdjustedDates.filter(event => 
-      isSameDay(parseISO(event.date), date)
-    );
+  const getFirstDayOfMonth = (date: Date): number => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    return new Date(year, month, 1).getDay();
   };
+
+  const goToPreviousMonth = () => {
+    setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1, 1));
+  };
+
+  const goToNextMonth = () => {
+    setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1));
+  };
+
+  const currentYear = selectedDate.getFullYear();
+  const currentMonth = selectedDate.getMonth();
+  const daysInMonth = getDaysInMonth(selectedDate);
+  const firstDayOfMonth = getFirstDayOfMonth(selectedDate);
+
+  const calendarDays = [];
+  for (let i = 0; i < firstDayOfMonth; i++) {
+    calendarDays.push(null);
+  }
+  for (let i = 1; i <= daysInMonth; i++) {
+    calendarDays.push(i);
+  }
 
   return (
     <Layout>
-      <Header 
-        title="Calendar" 
-        description="Schedule and manage your appointments."
+      <Header
+        title="Calendar"
+        description="Manage your schedule and events."
       >
-        <Button size="sm">
+        <Button size="sm" onClick={openCreateEventDialog}>
           <Plus className="h-4 w-4 mr-2" />
-          New Event
+          Create Event
         </Button>
       </Header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-[calc(100vh-12rem)]">
-        {/* Sidebar */}
-        <div className="lg:col-span-1 grid grid-cols-1 gap-4">
-          <div className="border rounded-lg bg-white shadow-sm p-4">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              className="w-full"
-            />
-          </div>
-          
-          <div className="border rounded-lg bg-white shadow-sm p-4 overflow-hidden">
-            <h3 className="font-semibold mb-3">Today's Events</h3>
-            <div className="space-y-3 overflow-y-auto max-h-[300px]">
-              {todayEvents.length > 0 ? (
-                todayEvents.map((event) => (
-                  <div 
-                    key={event.id} 
-                    className="p-2 rounded-md border cursor-pointer hover:bg-muted"
-                    onClick={() => setSelectedEvent(event)}
-                  >
-                    <div className={`w-full h-1 bg-${event.color}-500 rounded-full mb-2`}></div>
-                    <h4 className="font-medium">{event.title}</h4>
-                    <div className="flex items-center text-sm text-muted-foreground mt-1">
-                      <Clock className="h-3 w-3 mr-1" />
-                      <span>
-                        {formatEventTime(event.date)} - {formatEventTime(event.endDate)}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">No events scheduled for today</p>
-              )}
-            </div>
-          </div>
+      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search events..."
+            className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-        
-        {/* Main Calendar View */}
-        <div className="lg:col-span-3 border rounded-lg bg-white shadow-sm overflow-hidden">
-          <div className="p-3 border-b flex justify-between items-center">
-            <div className="flex items-center">
-              <Button variant="outline" size="icon" onClick={() => setSelectedDate(new Date())}>
-                <span className="text-xs font-medium">Today</span>
-              </Button>
-              <div className="flex items-center mx-2">
-                <Button variant="ghost" size="icon" onClick={goToPreviousWeek}>
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={goToNextWeek}>
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              <h3 className="font-semibold">
-                {format(selectedDate, "MMMM yyyy")}
-              </h3>
-            </div>
-            
-            <Tabs value={currentView} onValueChange={setCurrentView} className="w-auto">
-              <TabsList>
-                <TabsTrigger value="month">Month</TabsTrigger>
-                <TabsTrigger value="week">Week</TabsTrigger>
-                <TabsTrigger value="day">Day</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-          
-          <div className="overflow-y-auto max-h-[calc(100vh-16rem)]">
-            <TabsContent value="month" className="m-0">
-              {/* Month View */}
-              <div className="grid grid-cols-7 text-center py-2 border-b">
-                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-                  <div key={day} className="text-sm font-medium">
-                    {day}
-                  </div>
-                ))}
-              </div>
-              
-              <div className="grid grid-cols-7 auto-rows-fr gap-[1px] bg-border">
-                {daysInMonth.map((day, index) => {
-                  const dayEvents = getEventsForDay(day.date);
-                  const isToday = isSameDay(day.date, new Date());
-                  const isSelected = isSameDay(day.date, selectedDate);
-                  
-                  return (
-                    <div 
-                      key={index} 
-                      className={`min-h-[100px] bg-white p-1 ${!day.isCurrentMonth ? 'text-muted-foreground' : ''} ${isSelected ? 'bg-muted' : ''}`}
-                      onClick={() => setSelectedDate(day.date)}
-                    >
-                      <div className="flex justify-between items-center mb-1">
-                        <span className={`text-sm font-medium rounded-full h-6 w-6 flex items-center justify-center ${isToday ? 'bg-primary text-primary-foreground' : ''}`}>
-                          {format(day.date, "d")}
-                        </span>
-                        {dayEvents.length > 0 && (
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {dayEvents.length} event{dayEvents.length > 1 ? 's' : ''}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-1 overflow-hidden max-h-[80px]">
-                        {dayEvents.slice(0, 3).map((event) => (
-                          <div 
-                            key={event.id}
-                            className={`px-1 py-0.5 text-xs truncate rounded bg-${event.color}-100 text-${event.color}-800 border-l-2 border-${event.color}-500 cursor-pointer`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedEvent(event);
-                            }}
-                          >
-                            {formatEventTime(event.date)} {event.title}
-                          </div>
-                        ))}
-                        
-                        {dayEvents.length > 3 && (
-                          <div className="text-xs text-muted-foreground px-1">
-                            +{dayEvents.length - 3} more
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="week" className="m-0">
-              {/* Week View */}
-              <div className="grid grid-cols-8 border-b">
-                <div className="border-r p-2 min-w-[60px]"></div>
-                {weekDays.map((day, index) => (
-                  <div 
-                    key={index} 
-                    className={`text-center p-2 ${isSameDay(day, new Date()) ? 'bg-muted' : ''}`}
-                  >
-                    <p className="text-sm font-medium">{format(day, "EEE")}</p>
-                    <p className={`text-sm ${isSameDay(day, new Date()) ? 'bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center mx-auto' : ''}`}>
-                      {format(day, "d")}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="relative">
-                {timeSlots.map((hour) => (
-                  <div key={hour} className="grid grid-cols-8 border-b min-h-[60px]">
-                    <div className="border-r p-2 text-xs text-muted-foreground text-right min-w-[60px]">
-                      {hour}:00
-                    </div>
-                    {weekDays.map((day, dayIndex) => {
-                      const dayEvents = eventsWithAdjustedDates.filter(event => {
-                        const eventDate = parseISO(event.date);
-                        return isSameDay(eventDate, day) && eventDate.getHours() === hour;
-                      });
-                      
-                      return (
-                        <div key={dayIndex} className="relative border-r min-w-[120px]">
-                          {dayEvents.map((event) => (
-                            <div
-                              key={event.id}
-                              className={`absolute left-0 right-0 mx-1 p-1 rounded text-xs bg-${event.color}-100 text-${event.color}-800 border-l-2 border-${event.color}-500 cursor-pointer z-10 overflow-hidden`}
-                              style={{
-                                top: '0px',
-                                height: '58px' // Fixed height for demo
-                              }}
-                              onClick={() => setSelectedEvent(event)}
-                            >
-                              <div className="font-medium truncate">{event.title}</div>
-                              <div className="truncate">
-                                {formatEventTime(event.date)} - {formatEventTime(event.endDate)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="day" className="m-0">
-              {/* Day View */}
-              <div className="p-3 border-b text-center">
-                <h3 className="font-semibold">{format(selectedDate, "EEEE, MMMM d, yyyy")}</h3>
-              </div>
-              
-              <div className="p-4">
-                {selectedDateEvents.length > 0 ? (
-                  <div className="space-y-3">
-                    {selectedDateEvents.map((event) => (
-                      <div 
-                        key={event.id}
-                        className={`p-3 rounded-md border border-${event.color}-200 bg-${event.color}-50 cursor-pointer hover:bg-${event.color}-100`}
-                        onClick={() => setSelectedEvent(event)}
-                      >
-                        <div className="flex justify-between items-start">
-                          <h4 className="font-medium">{event.title}</h4>
-                          <span className={`text-xs font-medium px-2 py-1 rounded-full bg-${event.color}-100 text-${event.color}-800`}>
-                            {formatEventTime(event.date)} - {formatEventTime(event.endDate)}
-                          </span>
-                        </div>
-                        
-                        <p className="text-sm mt-2">{event.description}</p>
-                        
-                        <div className="mt-3 flex items-start gap-4">
-                          <div className="flex items-center">
-                            <User className="h-4 w-4 mr-1 text-muted-foreground" />
-                            <span className="text-sm">{event.attendees.length} attendees</span>
-                          </div>
-                          
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
-                            <span className="text-sm">{event.location}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                    <h3 className="font-medium text-lg">No events scheduled</h3>
-                    <p className="text-sm mt-1">Click the "New Event" button to create an event.</p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
-          </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={selectedView} onValueChange={handleViewChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select View" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="month">Month View</SelectItem>
+              <SelectItem value="week">Week View</SelectItem>
+              <SelectItem value="day">Day View</SelectItem>
+              <SelectItem value="agenda">Agenda View</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button variant="outline" size="icon">
+            <Filter className="h-4 w-4" />
+          </Button>
         </div>
       </div>
-      
-      {/* Event Detail Modal - Would be implemented with a Dialog component */}
-      {selectedEvent && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedEvent(null)}>
-          <div className="bg-white rounded-lg w-full max-w-lg overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className={`p-4 bg-${selectedEvent.color}-100 border-b border-${selectedEvent.color}-200`}>
-              <h3 className="font-semibold text-lg">{selectedEvent.title}</h3>
-              <div className="flex items-center text-sm mt-1">
-                <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
-                <span>
-                  {formatEventTime(selectedEvent.date)} - {formatEventTime(selectedEvent.endDate)}
-                </span>
+
+      {selectedView === "month" && (
+        <div className="rounded-md border">
+          <div className="flex items-center justify-between p-4">
+            <Button variant="ghost" size="icon" onClick={goToPreviousMonth}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-lg font-semibold">
+              {new Date(currentYear, currentMonth, 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </h2>
+            <Button variant="ghost" size="icon" onClick={goToNextMonth}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-7">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
+              <div key={index} className="px-4 py-2 text-center font-medium">
+                {day}
               </div>
-            </div>
-            
-            <div className="p-4">
-              <p className="mb-4">{selectedEvent.description}</p>
-              
-              <div className="space-y-3">
-                <div className="flex items-start">
-                  <MapPin className="h-4 w-4 mr-2 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Location</p>
-                    <p className="text-sm text-muted-foreground">{selectedEvent.location}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-start">
-                  <User className="h-4 w-4 mr-2 text-muted-foreground mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium">Attendees</p>
-                    <div className="text-sm text-muted-foreground">
-                      {selectedEvent.attendees.map((attendee: string, index: number) => (
-                        <p key={index}>{attendee}</p>
-                      ))}
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7">
+            {calendarDays.map((day, index) => {
+              const date = day ? new Date(currentYear, currentMonth, day) : null;
+              const isToday = date ? date.toDateString() === new Date().toDateString() : false;
+              const hasEvent = date ? filteredEvents.some(event => formatDate(event.start) === formatDate(date)) : false;
+
+              return (
+                <div
+                  key={index}
+                  className={`px-4 py-2 text-center border-t ${day ? 'border-r' : ''} relative ${isToday ? 'font-semibold' : ''} ${day ? 'cursor-pointer hover:bg-accent' : 'bg-gray-100 text-gray-400'}`}
+                  onClick={() => {
+                    if (date) {
+                      const eventForDay = filteredEvents.find(event => formatDate(event.start) === formatDate(date));
+                      if (eventForDay) {
+                        openEventDetailsDialog(eventForDay);
+                      }
+                    }
+                  }}
+                >
+                  {day}
+                  {hasEvent && (
+                    <div className="absolute top-1 right-1">
+                      <Badge variant="secondary" className="text-[0.6rem]">Event</Badge>
                     </div>
-                  </div>
+                  )}
                 </div>
-              </div>
-            </div>
-            
-            <div className="p-3 border-t flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setSelectedEvent(null)}>
-                Close
-              </Button>
-              <Button>
-                Edit Event
-              </Button>
-            </div>
+              );
+            })}
           </div>
         </div>
+      )}
+
+      {selectedView === "agenda" && (
+        <div className="space-y-4">
+          {filteredEvents.length > 0 ? (
+            filteredEvents.map((event) => (
+              <div key={event.id} className="rounded-md border p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">{event.title}</h3>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <User className="h-4 w-4 mr-2" />
+                        View Attendees
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        Add to Calendar
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive">
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {formatEventDate(event.start, event.end)} • {formatEventTime(event.start, event.end)}
+                </div>
+                {event.location && (
+                  <div className="flex items-center mt-2 text-sm">
+                    <Map className="h-4 w-4 mr-2 text-muted-foreground" />
+                    <span>{event.location}</span>
+                  </div>
+                )}
+                <p className="mt-2 text-sm">{event.description}</p>
+                <div className="mt-4 flex gap-2">
+                  {event.tags && event.tags.map((tag, i) => (
+                    <Badge key={i} variant="outline">{tag}</Badge>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <CalendarIcon className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+              <h3 className="font-medium text-lg">No events found</h3>
+              <p className="text-muted-foreground mt-1">Create a new event or adjust your search filters.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <CreateEventDialog isOpen={isCreateEventDialogOpen} onClose={closeCreateEventDialog} />
+      {selectedEvent && (
+        <EventDetailsDialog event={selectedEvent} onClose={closeEventDetailsDialog} />
       )}
     </Layout>
   );
 };
 
-export default CalendarPage;
+interface CreateEventDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const CreateEventDialog: React.FC<CreateEventDialogProps> = ({ isOpen, onClose }) => {
+  const [title, setTitle] = useState("");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [location, setLocation] = useState("");
+  const [description, setDescription] = useState("");
+  const [attendees, setAttendees] = useState("");
+  const [tags, setTags] = useState("");
+
+  const handleCreateEvent = () => {
+    // Basic validation
+    if (!title || !startDate || !endDate) {
+      alert("Please fill in all required fields.");
+      return;
+    }
+
+    // Create a new event object
+    const newEvent: Event = {
+      id: Date.now(), // Generate a unique ID
+      title: title,
+      start: startDate,
+      end: endDate,
+      location: location,
+      description: description,
+      attendees: attendees.split(",").map(s => s.trim()),
+      tags: tags.split(",").map(s => s.trim())
+    };
+
+    // Add the new event to the events list (you'll need to manage this state)
+    // setEvents(prevEvents => [...prevEvents, newEvent]);
+
+    // Close the dialog
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[525px]">
+        <DialogHeader>
+          <DialogTitle>Create New Event</DialogTitle>
+          <DialogDescription>
+            Schedule events, meetings, and appointments with ease.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="title" className="text-right text-sm font-medium leading-none text-right">
+              Title
+            </label>
+            <Input
+              id="title"
+              className="col-span-3"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="startDate" className="text-right text-sm font-medium leading-none text-right">
+              Start Date
+            </label>
+            {/* <DatePicker
+              id="startDate"
+              className="col-span-3"
+              selected={startDate}
+              onChange={(date: Date) => setStartDate(date)}
+              placeholderText="Select start date"
+            /> */}
+            <Input
+              type="datetime-local"
+              id="startDate"
+              className="col-span-3"
+              onChange={(e) => setStartDate(new Date(e.target.value))}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="endDate" className="text-right text-sm font-medium leading-none text-right">
+              End Date
+            </label>
+            {/* <DatePicker
+              id="endDate"
+              className="col-span-3"
+              selected={endDate}
+              onChange={(date: Date) => setEndDate(date)}
+              placeholderText="Select end date"
+            /> */}
+            <Input
+              type="datetime-local"
+              id="endDate"
+              className="col-span-3"
+              onChange={(e) => setEndDate(new Date(e.target.value))}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="location" className="text-right text-sm font-medium leading-none text-right">
+              Location
+            </label>
+            <Input
+              id="location"
+              className="col-span-3"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="description" className="text-right text-sm font-medium leading-none text-right">
+              Description
+            </label>
+            <Textarea
+              id="description"
+              className="col-span-3"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="attendees" className="text-right text-sm font-medium leading-none text-right">
+              Attendees
+            </label>
+            <Input
+              id="attendees"
+              className="col-span-3"
+              placeholder="john.doe@example.com, jane.doe@example.com"
+              value={attendees}
+              onChange={(e) => setAttendees(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="tags" className="text-right text-sm font-medium leading-none text-right">
+              Tags
+            </label>
+            <Input
+              id="tags"
+              className="col-span-3"
+              placeholder="meeting, work, important"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" onClick={handleCreateEvent}>Create Event</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const EventDetailsDialog = ({ event, onClose }: EventDetailsDialogProps) => {
+  return (
+    <DialogContent className="sm:max-w-[500px]">
+      <DialogHeader>
+        <DialogTitle className="text-xl">{event.title}</DialogTitle>
+        <DialogDescription>
+          <div className="mt-2 space-y-2">
+            <div className="flex items-center text-sm">
+              <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
+              <span>{formatEventDate(event.start, event.end)}</span>
+            </div>
+            <div className="flex items-center text-sm">
+              <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+              <span>{formatEventTime(event.start, event.end)}</span>
+            </div>
+            {event.location && (
+              <div className="flex items-center text-sm">
+                <Map className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>{event.location}</span>
+              </div>
+            )}
+            {event.attendees && (
+              <div className="flex items-center text-sm">
+                <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>{event.attendees.join(", ")}</span>
+              </div>
+            )}
+          </div>
+        </DialogDescription>
+      </DialogHeader>
+      
+      {event.description && (
+        <div className="mt-4">
+          <h4 className="text-sm font-medium mb-1">Description</h4>
+          <p className="text-sm text-muted-foreground">{event.description}</p>
+        </div>
+      )}
+      
+      <div className="mt-4 flex gap-2">
+        {event.tags && event.tags.map((tag, i) => (
+          <Badge key={i} variant="outline" className="bg-muted">{tag}</Badge>
+        ))}
+      </div>
+      
+      <DialogFooter className="mt-6">
+        <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+        {event.location && (
+          <Button size="sm" variant="outline" className="gap-1">
+            <Map className="h-3.5 w-3.5" />
+            Open Map
+          </Button>
+        )}
+        <Button size="sm">Edit Event</Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+};
+
+export default Calendar;

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
@@ -12,7 +11,7 @@ import {
   FileImage,
   FilePlus,
   FileSpreadsheet,
-  FilePresentation,
+  Presentation, // Changed from FilePresentation to Presentation
   Folder,
   MoreVertical,
   Calendar,
@@ -63,7 +62,7 @@ const documentData = [
     id: 3,
     name: "Product Roadmap 2023.pptx",
     type: "presentation",
-    icon: FilePresentation,
+    icon: Presentation, // Changed from FilePresentation to Presentation
     size: "4.5 MB",
     created: "2023-05-22",
     modified: "2023-06-15",
@@ -119,7 +118,7 @@ const documentData = [
     id: 7,
     name: "Client Presentation.pptx",
     type: "presentation",
-    icon: FilePresentation,
+    icon: Presentation,
     size: "5.7 MB",
     created: "2023-06-18",
     modified: "2023-06-25",
@@ -208,7 +207,7 @@ const Documents = () => {
               Spreadsheet
             </DropdownMenuItem>
             <DropdownMenuItem>
-              <FilePresentation className="h-4 w-4 mr-2" />
+              <Presentation className="h-4 w-4 mr-2" />
               Presentation
             </DropdownMenuItem>
             <DropdownMenuSeparator />
