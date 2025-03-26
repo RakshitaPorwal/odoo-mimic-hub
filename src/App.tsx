@@ -17,6 +17,7 @@ import Inventory from "./pages/Inventory";
 import Settings from "./pages/Settings";
 import Accounting from "./pages/Accounting";
 import Crm from "./pages/Crm";
+import EmailMarketing from "./pages/EmailMarketing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => {
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/accounting" element={<Accounting />} />
               <Route path="/crm" element={<Crm />} />
+              <Route path="/email-marketing" element={<EmailMarketing />} />
               <Route path="/settings" element={<Settings />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

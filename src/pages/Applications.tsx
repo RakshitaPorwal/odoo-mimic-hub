@@ -160,6 +160,39 @@ const Applications = () => {
     });
   };
 
+  const handleAppClick = (appTitle: string) => {
+    console.log(`Opening ${appTitle}`);
+    switch(appTitle) {
+      case "Email Marketing":
+        navigate("/email-marketing");
+        break;
+      case "Messaging":
+        navigate("/messaging");
+        break;
+      case "Calendar":
+        navigate("/calendar");
+        break;
+      case "Documents":
+        navigate("/documents");
+        break;
+      case "Sales":
+        navigate("/sales");
+        break;
+      case "Contacts":
+        navigate("/contacts");
+        break;
+      case "Inventory":
+        navigate("/inventory");
+        break;
+      case "Settings":
+        navigate("/settings");
+        break;
+      default:
+        // No navigation
+        break;
+    }
+  };
+
   return (
     <Layout>
       <Header 
@@ -203,10 +236,7 @@ const Applications = () => {
                   description={app.description}
                   icon={app.icon}
                   color={app.color}
-                  onClick={() => {
-                    console.log(`Opening ${app.title}`);
-                    // Navigate to app page (if implemented)
-                  }}
+                  onClick={() => handleAppClick(app.title)}
                 />
               ))}
             </div>

@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   Coins,
   BadgeDollarSign,
-  Package
+  Package,
+  Mail
 } from "lucide-react";
 
 interface SidebarProps {
@@ -32,6 +33,7 @@ const navItems = [
   { name: "Inventory", path: "/inventory", icon: Package },
   { name: "Accounting", path: "/accounting", icon: BadgeDollarSign },
   { name: "CRM", path: "/crm", icon: Coins },
+  { name: "Email Marketing", path: "/email-marketing", icon: Mail },
   { name: "Settings", path: "/settings", icon: Settings },
 ];
 
