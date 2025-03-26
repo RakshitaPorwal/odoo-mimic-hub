@@ -4,14 +4,16 @@ import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
-  Grid, // Replacing Apps with Grid
+  Grid, 
   Settings, 
   Users, 
   ShoppingCart, 
   MessageCircle, 
   FileText, 
   Calendar,
-  ChevronLeft
+  ChevronLeft,
+  Coins,
+  BadgeDollarSign
 } from "lucide-react";
 
 interface SidebarProps {
@@ -20,12 +22,14 @@ interface SidebarProps {
 
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { name: "Applications", path: "/applications", icon: Grid }, // Changed to Grid
+  { name: "Applications", path: "/applications", icon: Grid },
   { name: "Messaging", path: "/messaging", icon: MessageCircle },
   { name: "Contacts", path: "/contacts", icon: Users },
   { name: "Calendar", path: "/calendar", icon: Calendar },
   { name: "Documents", path: "/documents", icon: FileText },
   { name: "Sales", path: "/sales", icon: ShoppingCart },
+  { name: "Accounting", path: "/accounting", icon: BadgeDollarSign },
+  { name: "CRM", path: "/crm", icon: Coins },
   { name: "Settings", path: "/settings", icon: Settings },
 ];
 
