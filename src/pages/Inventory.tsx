@@ -50,7 +50,7 @@ const inventoryItems = [
   { id: "INV003", name: "Office Desk", category: "Furniture", stock: 12, location: "Warehouse A", value: 350, lastUpdated: "2023-08-10" },
   { id: "INV004", name: "Office Chair", category: "Furniture", stock: 24, location: "Warehouse A", value: 250, lastUpdated: "2023-08-09" },
   { id: "INV005", name: "Laptop - Dell XPS", category: "Hardware", stock: 18, location: "Tech Room", value: 1800, lastUpdated: "2023-08-07" },
-  { id: "INV006", name: "Monitor - 27" 4K", category: "Hardware", stock: 15, location: "Tech Room", value: 400, lastUpdated: "2023-08-05" },
+  { id: "INV006", name: "Monitor - 27\" 4K", category: "Hardware", stock: 15, location: "Tech Room", value: 400, lastUpdated: "2023-08-05" },
   { id: "INV007", name: "Keyboard Mechanical", category: "Hardware", stock: 32, location: "Storage B", value: 120, lastUpdated: "2023-08-03" },
   { id: "INV008", name: "Mouse Wireless", category: "Hardware", stock: 45, location: "Storage B", value: 80, lastUpdated: "2023-08-01" },
 ];
