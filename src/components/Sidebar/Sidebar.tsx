@@ -4,7 +4,7 @@ import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
-  Apps, 
+  Grid, // Replacing Apps with Grid
   Settings, 
   Users, 
   ShoppingCart, 
@@ -20,7 +20,7 @@ interface SidebarProps {
 
 const navItems = [
   { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-  { name: "Applications", path: "/applications", icon: Apps },
+  { name: "Applications", path: "/applications", icon: Grid }, // Changed to Grid
   { name: "Messaging", path: "/messaging", icon: MessageCircle },
   { name: "Contacts", path: "/contacts", icon: Users },
   { name: "Calendar", path: "/calendar", icon: Calendar },
