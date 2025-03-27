@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
@@ -588,15 +587,22 @@ const Inventory = () => {
                           <TableHead>Unit</TableHead>
                           <TableHead>Location</TableHead>
                           <TableHead>Value</TableHead>
+                          <TableHead>Stock Method</TableHead>
+                          <TableHead>Reorder Level</TableHead>
+                          <TableHead>Reorder Qty</TableHead>
+                          <TableHead>Batch No.</TableHead>
+                          <TableHead>HSN Code</TableHead>
+                          <TableHead>Barcode</TableHead>
                           <TableHead>Supplier</TableHead>
                           <TableHead>Last Updated</TableHead>
+                          <TableHead>Created</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredItems.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={10} className="text-center h-24">
+                            <TableCell colSpan={17} className="text-center h-24">
                               No inventory items found.
                             </TableCell>
                           </TableRow>
@@ -623,8 +629,15 @@ const Inventory = () => {
                               <TableCell>{item.unit_of_measure}</TableCell>
                               <TableCell>{item.location}</TableCell>
                               <TableCell>{formatCurrency(item.value)}</TableCell>
+                              <TableCell>{item.stock_valuation_method || 'FIFO'}</TableCell>
+                              <TableCell>{item.reorder_level}</TableCell>
+                              <TableCell>{item.reorder_quantity}</TableCell>
+                              <TableCell>{item.batch_number || 'N/A'}</TableCell>
+                              <TableCell>{item.hsn_code || 'N/A'}</TableCell>
+                              <TableCell>{item.barcode || 'N/A'}</TableCell>
                               <TableCell>{item.supplier || 'N/A'}</TableCell>
                               <TableCell>{formatDate(item.last_updated)}</TableCell>
+                              <TableCell>{formatDate(item.created_at)}</TableCell>
                               <TableCell className="text-right">
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
