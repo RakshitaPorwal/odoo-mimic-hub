@@ -45,6 +45,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/hooks/use-toast";
 import { 
   getInventoryItems, 
@@ -76,6 +77,12 @@ const formatDate = (dateString: string | null) => {
   return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 };
 
+// Format percentage
+const formatPercentage = (value: number | null) => {
+  if (value === null) return "N/A";
+  return `${value.toFixed(2)}%`;
+};
+
 const Inventory = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -101,7 +108,11 @@ const Inventory = () => {
     reorder_level: 10,
     reorder_quantity: 20,
     stock_valuation_method: "FIFO",
-    barcode: ""
+    barcode: "",
+    cgst_rate: 0,
+    sgst_rate: 0,
+    expiry_date: "",
+    warehouse_id: null as number | null
   });
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
@@ -202,7 +213,11 @@ const Inventory = () => {
         reorder_level: 10,
         reorder_quantity: 20,
         stock_valuation_method: "FIFO",
-        barcode: ""
+        barcode: "",
+        cgst_rate: 0,
+        sgst_rate: 0,
+        expiry_date: "",
+        warehouse_id: null as number | null
       });
       
       // Show success message
@@ -461,6 +476,50 @@ const Inventory = () => {
                       <option value="SPECIFIC">Specific Identification</option>
                     </select>
                   </div>
+                  
+                  {/* Additional fields for all Supabase inventory columns */}
+                  <div className="space-y-2">
+                    <Label htmlFor="cgst_rate">CGST Rate (%)</Label>
+                    <Input 
+                      id="cgst_rate" 
+                      type="number" 
+                      value={newItem.cgst_rate || 0}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sgst_rate">SGST Rate (%)</Label>
+                    <Input 
+                      id="sgst_rate" 
+                      type="number" 
+                      value={newItem.sgst_rate || 0}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="expiry_date">Expiry Date</Label>
+                    <Input 
+                      id="expiry_date" 
+                      type="date" 
+                      value={newItem.expiry_date || ''}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="warehouse_id">Warehouse ID</Label>
+                    <Input 
+                      id="warehouse_id" 
+                      type="number" 
+                      value={newItem.warehouse_id || ''}
+                      onChange={handleInputChange}
+                      min="0"
+                      placeholder="Optional"
+                    />
+                  </div>
                 </div>
               </div>
               <DialogFooter>
@@ -576,93 +635,105 @@ const Inventory = () => {
                 </TabsList>
                 
                 <TabsContent value="items" className="border rounded-md mt-6">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Category</TableHead>
-                          <TableHead>Stock</TableHead>
-                          <TableHead>Unit</TableHead>
-                          <TableHead>Location</TableHead>
-                          <TableHead>Value</TableHead>
-                          <TableHead>Stock Method</TableHead>
-                          <TableHead>Reorder Level</TableHead>
-                          <TableHead>Reorder Qty</TableHead>
-                          <TableHead>Batch No.</TableHead>
-                          <TableHead>HSN Code</TableHead>
-                          <TableHead>Barcode</TableHead>
-                          <TableHead>Supplier</TableHead>
-                          <TableHead>Last Updated</TableHead>
-                          <TableHead>Created</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredItems.length === 0 ? (
+                  <ScrollArea className="overflow-x-auto" orientation="horizontal">
+                    <div className="min-w-max">
+                      <Table>
+                        <TableHeader>
                           <TableRow>
-                            <TableCell colSpan={17} className="text-center h-24">
-                              No inventory items found.
-                            </TableCell>
+                            <TableHead>ID</TableHead>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Category</TableHead>
+                            <TableHead>Stock</TableHead>
+                            <TableHead>Unit</TableHead>
+                            <TableHead>Location</TableHead>
+                            <TableHead>Warehouse ID</TableHead>
+                            <TableHead>Value</TableHead>
+                            <TableHead>CGST Rate</TableHead>
+                            <TableHead>SGST Rate</TableHead>
+                            <TableHead>Total GST</TableHead>
+                            <TableHead>Stock Method</TableHead>
+                            <TableHead>Reorder Level</TableHead>
+                            <TableHead>Reorder Qty</TableHead>
+                            <TableHead>Batch No.</TableHead>
+                            <TableHead>HSN Code</TableHead>
+                            <TableHead>Barcode</TableHead>
+                            <TableHead>Supplier</TableHead>
+                            <TableHead>Expiry Date</TableHead>
+                            <TableHead>Last Updated</TableHead>
+                            <TableHead>Created</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                           </TableRow>
-                        ) : (
-                          filteredItems.map((item) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="font-medium">{item.id}</TableCell>
-                              <TableCell>{item.name}</TableCell>
-                              <TableCell>
-                                <span className="inline-flex items-center px-2.5 py-0.5 text-xs rounded-full bg-muted">
-                                  {item.category}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex items-center">
-                                  {item.stock < item.reorder_level ? (
-                                    <span className="w-2 h-2 rounded-full bg-red-500 mr-2" title="Low stock"></span>
-                                  ) : (
-                                    <span className="w-2 h-2 rounded-full bg-green-500 mr-2" title="Good stock level"></span>
-                                  )}
-                                  {item.stock}
-                                </div>
-                              </TableCell>
-                              <TableCell>{item.unit_of_measure}</TableCell>
-                              <TableCell>{item.location}</TableCell>
-                              <TableCell>{formatCurrency(item.value)}</TableCell>
-                              <TableCell>{item.stock_valuation_method || 'FIFO'}</TableCell>
-                              <TableCell>{item.reorder_level}</TableCell>
-                              <TableCell>{item.reorder_quantity}</TableCell>
-                              <TableCell>{item.batch_number || 'N/A'}</TableCell>
-                              <TableCell>{item.hsn_code || 'N/A'}</TableCell>
-                              <TableCell>{item.barcode || 'N/A'}</TableCell>
-                              <TableCell>{item.supplier || 'N/A'}</TableCell>
-                              <TableCell>{formatDate(item.last_updated)}</TableCell>
-                              <TableCell>{formatDate(item.created_at)}</TableCell>
-                              <TableCell className="text-right">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleUpdateStock(item.id, item.stock)}>
-                                      <RefreshCcw className="h-4 w-4 mr-2" />
-                                      Update Stock
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => handleMoveItem(item.id, item.location)}>
-                                      <ArrowUpDown className="h-4 w-4 mr-2" />
-                                      Move Item
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredItems.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={22} className="text-center h-24">
+                                No inventory items found.
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                          ) : (
+                            filteredItems.map((item) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="font-medium">{item.id}</TableCell>
+                                <TableCell>{item.name}</TableCell>
+                                <TableCell>
+                                  <span className="inline-flex items-center px-2.5 py-0.5 text-xs rounded-full bg-muted">
+                                    {item.category}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center">
+                                    {item.stock < item.reorder_level ? (
+                                      <span className="w-2 h-2 rounded-full bg-red-500 mr-2" title="Low stock"></span>
+                                    ) : (
+                                      <span className="w-2 h-2 rounded-full bg-green-500 mr-2" title="Good stock level"></span>
+                                    )}
+                                    {item.stock}
+                                  </div>
+                                </TableCell>
+                                <TableCell>{item.unit_of_measure}</TableCell>
+                                <TableCell>{item.location}</TableCell>
+                                <TableCell>{item.warehouse_id || 'N/A'}</TableCell>
+                                <TableCell>{formatCurrency(item.value)}</TableCell>
+                                <TableCell>{formatPercentage(item.cgst_rate)}</TableCell>
+                                <TableCell>{formatPercentage(item.sgst_rate)}</TableCell>
+                                <TableCell>{item.total_gst ? formatCurrency(item.total_gst) : 'N/A'}</TableCell>
+                                <TableCell>{item.stock_valuation_method || 'FIFO'}</TableCell>
+                                <TableCell>{item.reorder_level}</TableCell>
+                                <TableCell>{item.reorder_quantity}</TableCell>
+                                <TableCell>{item.batch_number || 'N/A'}</TableCell>
+                                <TableCell>{item.hsn_code || 'N/A'}</TableCell>
+                                <TableCell>{item.barcode || 'N/A'}</TableCell>
+                                <TableCell>{item.supplier || 'N/A'}</TableCell>
+                                <TableCell>{item.expiry_date ? formatDate(item.expiry_date) : 'N/A'}</TableCell>
+                                <TableCell>{formatDate(item.last_updated)}</TableCell>
+                                <TableCell>{formatDate(item.created_at)}</TableCell>
+                                <TableCell className="text-right">
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => handleUpdateStock(item.id, item.stock)}>
+                                        <RefreshCcw className="h-4 w-4 mr-2" />
+                                        Update Stock
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={()={() => handleMoveItem(item.id, item.location)}>
+                                        <ArrowUpDown className="h-4 w-4 mr-2" />
+                                        Move Item
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </ScrollArea>
                 </TabsContent>
                 
                 <TabsContent value="locations" className="border rounded-md mt-6 p-6 flex flex-col items-center justify-center min-h-[300px]">

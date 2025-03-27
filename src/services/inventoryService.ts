@@ -12,9 +12,9 @@ export interface InventoryItem {
   unit_of_measure: string;
   batch_number: string | null;
   expiry_date: string | null;
-  cgst_rate: number;
-  sgst_rate: number;
-  total_gst: number;
+  cgst_rate: number | null;
+  sgst_rate: number | null;
+  total_gst: number | null;
   hsn_code: string | null;
   supplier: string | null;
   reorder_level: number;
