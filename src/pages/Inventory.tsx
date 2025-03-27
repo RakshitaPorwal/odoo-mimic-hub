@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
@@ -34,7 +33,8 @@ import {
   Boxes,
   RefreshCcw,
   BarChart3,
-  Loader2
+  Loader2,
+  AlertTriangle
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import {
@@ -44,7 +44,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
-import { useForm } from "react-hook-form";
 import { 
   getInventoryItems, 
   getLocations, 
@@ -56,6 +55,8 @@ import {
   InventoryItem,
   Location
 } from "@/services/inventoryService";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Format currency
 const formatCurrency = (amount: number) => {
@@ -92,10 +93,18 @@ const Inventory = () => {
     value: 0
   });
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [supabaseConfigured, setSupabaseConfigured] = useState(true);
 
   // Load data on component mount
   useEffect(() => {
     const loadData = async () => {
+      // Check if Supabase is configured
+      if (!isSupabaseConfigured()) {
+        setSupabaseConfigured(false);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const [itemsData, locationsData, metricsData] = await Promise.all([
@@ -311,7 +320,7 @@ const Inventory = () => {
         <div className="flex space-x-2">
           <Dialog>
             <DialogTrigger asChild>
-              <Button size="sm">
+              <Button size="sm" disabled={!supabaseConfigured}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Item
               </Button>
@@ -402,6 +411,26 @@ const Inventory = () => {
         </div>
       </Header>
 
+      {!supabaseConfigured && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Supabase Configuration Missing</AlertTitle>
+          <AlertDescription>
+            <p>You need to add your Supabase credentials to connect to the database.</p>
+            <ol className="list-decimal ml-6 mt-2">
+              <li>Create a Supabase project at <a href="https://app.supabase.io" target="_blank" rel="noopener noreferrer" className="underline">https://app.supabase.io</a></li>
+              <li>Set up database tables according to the instructions in <code>supabase-setup.md</code></li>
+              <li>Create a <code>.env</code> file in the project root with the following variables:</li>
+            </ol>
+            <pre className="bg-slate-800 text-white p-3 rounded mt-2 overflow-x-auto">
+              VITE_SUPABASE_URL=https://your-project-url.supabase.co
+              VITE_SUPABASE_ANON_KEY=your-anon-key
+            </pre>
+            <p className="mt-2">Restart your development server after setting up the environment variables.</p>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -409,194 +438,198 @@ const Inventory = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-                <Boxes className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{metrics.totalItems.toLocaleString()}</div>
-                <p className="text-xs text-muted-foreground">Across {metrics.locationCount} locations</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
-                <Package className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(metrics.totalValue)}</div>
-                <p className="text-xs text-muted-foreground">Total value of all items</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Storage Capacity</CardTitle>
-                <Warehouse className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {metrics.capacityUsagePercentage}%
-                </div>
-                <p className="text-xs text-muted-foreground">Of total capacity used</p>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
-                <PackageOpen className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{metrics.lowStockItems}</div>
-                <p className="text-xs text-muted-foreground">Items with less than 20 units</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-medium">Inventory Management</h3>
-            <div className="relative w-[350px]">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search inventory items..." 
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <Tabs defaultValue="items" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-flex">
-              <TabsTrigger value="items">Items</TabsTrigger>
-              <TabsTrigger value="locations">Locations</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="items" className="border rounded-md mt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Value</TableHead>
-                    <TableHead>Last Updated</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredItems.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center h-24">
-                        No inventory items found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.id}</TableCell>
-                        <TableCell>{item.name}</TableCell>
-                        <TableCell>
-                          <span className="inline-flex items-center px-2.5 py-0.5 text-xs rounded-full bg-muted">
-                            {item.category}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            {item.stock < 20 ? (
-                              <span className="w-2 h-2 rounded-full bg-red-500 mr-2" title="Low stock"></span>
-                            ) : (
-                              <span className="w-2 h-2 rounded-full bg-green-500 mr-2" title="Good stock level"></span>
-                            )}
-                            {item.stock}
-                          </div>
-                        </TableCell>
-                        <TableCell>{item.location}</TableCell>
-                        <TableCell>{formatCurrency(item.value)}</TableCell>
-                        <TableCell>{formatDate(item.last_updated)}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleUpdateStock(item.id, item.stock)}>
-                                <RefreshCcw className="h-4 w-4 mr-2" />
-                                Update Stock
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleMoveItem(item.id, item.location_id)}>
-                                <ArrowUpDown className="h-4 w-4 mr-2" />
-                                Move Item
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TabsContent>
-            
-            <TabsContent value="locations" className="border rounded-md mt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Total Capacity</TableHead>
-                    <TableHead>Available Space</TableHead>
-                    <TableHead>Item Count</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {locations.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center h-24">
-                        No locations found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    locations.map((location) => (
-                      <TableRow key={location.id}>
-                        <TableCell className="font-medium">{location.name}</TableCell>
-                        <TableCell>{location.address}</TableCell>
-                        <TableCell>{location.capacity.toLocaleString()} units</TableCell>
-                        <TableCell>{location.available.toLocaleString()} units</TableCell>
-                        <TableCell>{location.item_count.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">View Items</Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TabsContent>
-            
-            <TabsContent value="analytics" className="p-6 flex flex-col items-center justify-center border rounded-md mt-6 text-center min-h-[300px]">
-              <div className="flex flex-col items-center">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                  <BarChart3 className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Inventory Analytics</h3>
-                <p className="text-muted-foreground mb-4 max-w-md">
-                  Track stock levels, inventory turnover, and other key metrics to optimize your inventory management.
-                </p>
-                <Button>View Reports</Button>
+          {supabaseConfigured && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Total Items</CardTitle>
+                    <Boxes className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{metrics.totalItems.toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground">Across {metrics.locationCount} locations</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Inventory Value</CardTitle>
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(metrics.totalValue)}</div>
+                    <p className="text-xs text-muted-foreground">Total value of all items</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Storage Capacity</CardTitle>
+                    <Warehouse className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {metrics.capacityUsagePercentage}%
+                    </div>
+                    <p className="text-xs text-muted-foreground">Of total capacity used</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
+                    <PackageOpen className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{metrics.lowStockItems}</div>
+                    <p className="text-xs text-muted-foreground">Items with less than 20 units</p>
+                  </CardContent>
+                </Card>
               </div>
-            </TabsContent>
-          </Tabs>
+
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-medium">Inventory Management</h3>
+                <div className="relative w-[350px]">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search inventory items..." 
+                    className="pl-10"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <Tabs defaultValue="items" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-flex">
+                  <TabsTrigger value="items">Items</TabsTrigger>
+                  <TabsTrigger value="locations">Locations</TabsTrigger>
+                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="items" className="border rounded-md mt-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Stock</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Value</TableHead>
+                        <TableHead>Last Updated</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredItems.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center h-24">
+                            No inventory items found.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">{item.id}</TableCell>
+                            <TableCell>{item.name}</TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center px-2.5 py-0.5 text-xs rounded-full bg-muted">
+                                {item.category}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                {item.stock < 20 ? (
+                                  <span className="w-2 h-2 rounded-full bg-red-500 mr-2" title="Low stock"></span>
+                                ) : (
+                                  <span className="w-2 h-2 rounded-full bg-green-500 mr-2" title="Good stock level"></span>
+                                )}
+                                {item.stock}
+                              </div>
+                            </TableCell>
+                            <TableCell>{item.location}</TableCell>
+                            <TableCell>{formatCurrency(item.value)}</TableCell>
+                            <TableCell>{formatDate(item.last_updated)}</TableCell>
+                            <TableCell className="text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleUpdateStock(item.id, item.stock)}>
+                                    <RefreshCcw className="h-4 w-4 mr-2" />
+                                    Update Stock
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleMoveItem(item.id, item.location_id)}>
+                                    <ArrowUpDown className="h-4 w-4 mr-2" />
+                                    Move Item
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                
+                <TabsContent value="locations" className="border rounded-md mt-6">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Address</TableHead>
+                        <TableHead>Total Capacity</TableHead>
+                        <TableHead>Available Space</TableHead>
+                        <TableHead>Item Count</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {locations.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center h-24">
+                            No locations found.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        locations.map((location) => (
+                          <TableRow key={location.id}>
+                            <TableCell className="font-medium">{location.name}</TableCell>
+                            <TableCell>{location.address}</TableCell>
+                            <TableCell>{location.capacity.toLocaleString()} units</TableCell>
+                            <TableCell>{location.available.toLocaleString()} units</TableCell>
+                            <TableCell>{location.item_count.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm">View Items</Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+                
+                <TabsContent value="analytics" className="p-6 flex flex-col items-center justify-center border rounded-md mt-6 text-center min-h-[300px]">
+                  <div className="flex flex-col items-center">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                      <BarChart3 className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-medium mb-2">Inventory Analytics</h3>
+                    <p className="text-muted-foreground mb-4 max-w-md">
+                      Track stock levels, inventory turnover, and other key metrics to optimize your inventory management.
+                    </p>
+                    <Button>View Reports</Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </>
+          )}
         </>
       )}
     </Layout>
