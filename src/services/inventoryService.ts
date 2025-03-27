@@ -3,15 +3,27 @@ import { supabase } from '@/lib/supabase';
 
 // Types for our database tables
 export interface InventoryItem {
-  id: string;
+  id: number;
   name: string;
   category: string;
   stock: number;
-  location_id: number;
-  location: string; // Denormalized for convenience
+  location: string;
   value: number;
+  unit_of_measure: string;
+  batch_number: string | null;
+  expiry_date: string | null;
+  cgst_rate: number;
+  sgst_rate: number;
+  total_gst: number;
+  hsn_code: string | null;
+  supplier: string | null;
+  reorder_level: number;
+  reorder_quantity: number;
+  stock_valuation_method: string;
+  warehouse_id: number | null;
+  barcode: string | null;
   last_updated: string;
-  created_at?: string;
+  created_at: string;
 }
 
 export interface Location {
@@ -26,7 +38,7 @@ export interface Location {
 
 export interface InventoryTransaction {
   id: number;
-  item_id: string;
+  item_id: number;
   from_location_id: number | null;
   to_location_id: number | null;
   quantity: number;
@@ -38,8 +50,8 @@ export interface InventoryTransaction {
 // Inventory Item Operations
 export const getInventoryItems = async (): Promise<InventoryItem[]> => {
   const { data, error } = await supabase
-    .from('inventory_items')
-    .select('*, locations(name)')
+    .from('inventory')
+    .select('*')
     .order('name');
   
   if (error) {
@@ -47,17 +59,13 @@ export const getInventoryItems = async (): Promise<InventoryItem[]> => {
     throw error;
   }
   
-  // Transform the data to match our expected format
-  return data.map(item => ({
-    ...item,
-    location: item.locations.name,
-  }));
+  return data || [];
 };
 
-export const getInventoryItem = async (id: string): Promise<InventoryItem> => {
+export const getInventoryItem = async (id: number): Promise<InventoryItem> => {
   const { data, error } = await supabase
-    .from('inventory_items')
-    .select('*, locations(name)')
+    .from('inventory')
+    .select('*')
     .eq('id', id)
     .single();
   
@@ -66,20 +74,17 @@ export const getInventoryItem = async (id: string): Promise<InventoryItem> => {
     throw error;
   }
   
-  return {
-    ...data,
-    location: data.locations.name,
-  };
+  return data;
 };
 
-export const createInventoryItem = async (item: Omit<InventoryItem, 'id' | 'created_at'>): Promise<InventoryItem> => {
+export const createInventoryItem = async (item: Omit<InventoryItem, 'id' | 'created_at' | 'last_updated' | 'total_gst'>): Promise<InventoryItem> => {
   const { data, error } = await supabase
-    .from('inventory_items')
+    .from('inventory')
     .insert([{
       ...item,
       last_updated: new Date().toISOString(),
     }])
-    .select('*, locations(name)')
+    .select()
     .single();
   
   if (error) {
@@ -87,21 +92,18 @@ export const createInventoryItem = async (item: Omit<InventoryItem, 'id' | 'crea
     throw error;
   }
   
-  return {
-    ...data,
-    location: data.locations.name,
-  };
+  return data;
 };
 
-export const updateInventoryItem = async (id: string, updates: Partial<InventoryItem>): Promise<InventoryItem> => {
+export const updateInventoryItem = async (id: number, updates: Partial<Omit<InventoryItem, 'id' | 'created_at' | 'total_gst'>>): Promise<InventoryItem> => {
   const { data, error } = await supabase
-    .from('inventory_items')
+    .from('inventory')
     .update({
       ...updates,
       last_updated: new Date().toISOString(),
     })
     .eq('id', id)
-    .select('*, locations(name)')
+    .select()
     .single();
   
   if (error) {
@@ -109,15 +111,12 @@ export const updateInventoryItem = async (id: string, updates: Partial<Inventory
     throw error;
   }
   
-  return {
-    ...data,
-    location: data.locations.name,
-  };
+  return data;
 };
 
-export const deleteInventoryItem = async (id: string): Promise<void> => {
+export const deleteInventoryItem = async (id: number): Promise<void> => {
   const { error } = await supabase
-    .from('inventory_items')
+    .from('inventory')
     .delete()
     .eq('id', id);
   
@@ -139,7 +138,7 @@ export const getLocations = async (): Promise<Location[]> => {
     throw error;
   }
   
-  return data;
+  return data || [];
 };
 
 export const createLocation = async (location: Omit<Location, 'id' | 'created_at'>): Promise<Location> => {
@@ -176,7 +175,7 @@ export const createTransaction = async (transaction: Omit<InventoryTransaction, 
 export const getRecentTransactions = async (limit: number = 10): Promise<InventoryTransaction[]> => {
   const { data, error } = await supabase
     .from('inventory_transactions')
-    .select('*, inventory_items(name), from_location:locations!from_location_id(name), to_location:locations!to_location_id(name)')
+    .select('*, inventory!inner(*), from_location:locations!from_location_id(*), to_location:locations!to_location_id(*)')
     .order('created_at', { ascending: false })
     .limit(limit);
   
@@ -185,14 +184,14 @@ export const getRecentTransactions = async (limit: number = 10): Promise<Invento
     throw error;
   }
   
-  return data;
+  return data || [];
 };
 
 // Calculate Inventory Metrics
 export const getInventoryMetrics = async () => {
   // Get total items and value
   const { data: itemsData, error: itemsError } = await supabase
-    .from('inventory_items')
+    .from('inventory')
     .select('stock, value');
   
   if (itemsError) {
@@ -201,12 +200,12 @@ export const getInventoryMetrics = async () => {
   }
   
   // Calculate metrics
-  const totalItems = itemsData.reduce((sum, item) => sum + item.stock, 0);
-  const totalValue = itemsData.reduce((sum, item) => sum + (item.stock * item.value), 0);
+  const totalItems = (itemsData || []).reduce((sum, item) => sum + item.stock, 0);
+  const totalValue = (itemsData || []).reduce((sum, item) => sum + (item.stock * item.value), 0);
   
-  // Get low stock items count
+  // Get low stock items count (below reorder_level)
   const { count: lowStockItems, error: lowStockError } = await supabase
-    .from('inventory_items')
+    .from('inventory')
     .select('id', { count: 'exact', head: true })
     .lt('stock', 20);
   
@@ -215,26 +214,11 @@ export const getInventoryMetrics = async () => {
     throw lowStockError;
   }
   
-  // Get location capacity data
-  const { data: locationsData, error: locationsError } = await supabase
-    .from('locations')
-    .select('capacity, available, item_count');
-  
-  if (locationsError) {
-    console.error('Error getting location capacity data:', locationsError);
-    throw locationsError;
-  }
-  
-  // Calculate capacity usage
-  const totalCapacity = locationsData.reduce((sum, loc) => sum + loc.capacity, 0);
-  const usedCapacity = locationsData.reduce((sum, loc) => sum + loc.item_count, 0);
-  const capacityUsagePercentage = Math.round((usedCapacity / totalCapacity) * 100);
-  
   return {
     totalItems,
     totalValue,
-    lowStockItems,
-    capacityUsagePercentage,
-    locationCount: locationsData.length
+    lowStockItems: lowStockItems || 0,
+    capacityUsagePercentage: 0, // We'll need to populate this later when we have warehouse data
+    locationCount: 0 // Will be updated when we create locations table
   };
 };

@@ -9,7 +9,78 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      inventory: {
+        Row: {
+          barcode: string | null
+          batch_number: string | null
+          category: string
+          cgst_rate: number | null
+          created_at: string | null
+          expiry_date: string | null
+          hsn_code: string | null
+          id: number
+          last_updated: string | null
+          location: string
+          name: string
+          reorder_level: number | null
+          reorder_quantity: number | null
+          sgst_rate: number | null
+          stock: number
+          stock_valuation_method: string | null
+          supplier: string | null
+          total_gst: number | null
+          unit_of_measure: string | null
+          value: number
+          warehouse_id: number | null
+        }
+        Insert: {
+          barcode?: string | null
+          batch_number?: string | null
+          category: string
+          cgst_rate?: number | null
+          created_at?: string | null
+          expiry_date?: string | null
+          hsn_code?: string | null
+          id?: number
+          last_updated?: string | null
+          location: string
+          name: string
+          reorder_level?: number | null
+          reorder_quantity?: number | null
+          sgst_rate?: number | null
+          stock: number
+          stock_valuation_method?: string | null
+          supplier?: string | null
+          total_gst?: number | null
+          unit_of_measure?: string | null
+          value: number
+          warehouse_id?: number | null
+        }
+        Update: {
+          barcode?: string | null
+          batch_number?: string | null
+          category?: string
+          cgst_rate?: number | null
+          created_at?: string | null
+          expiry_date?: string | null
+          hsn_code?: string | null
+          id?: number
+          last_updated?: string | null
+          location?: string
+          name?: string
+          reorder_level?: number | null
+          reorder_quantity?: number | null
+          sgst_rate?: number | null
+          stock?: number
+          stock_valuation_method?: string | null
+          supplier?: string | null
+          total_gst?: number | null
+          unit_of_measure?: string | null
+          value?: number
+          warehouse_id?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
