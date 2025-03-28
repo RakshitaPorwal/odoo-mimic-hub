@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
@@ -24,6 +23,7 @@ import {
   FileSpreadsheet, 
   Plus
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const invoicesData = [
   { id: "INV-001", client: "Acme Inc.", amount: 1250.00, status: "paid", date: "2023-09-15" },
@@ -52,6 +52,9 @@ const Accounting = () => {
           <Button size="sm">
             <Plus className="h-4 w-4 mr-2" />
             New Transaction
+          </Button>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/invoices">View All Invoices</Link>
           </Button>
         </div>
       </Header>
@@ -155,7 +158,9 @@ const Accounting = () => {
                   </TableCell>
                   <TableCell>{invoice.date}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm">View</Button>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link to="/invoices">View</Link>
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
