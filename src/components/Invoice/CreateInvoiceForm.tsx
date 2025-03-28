@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -216,15 +215,20 @@ export default function CreateInvoiceForm() {
         return;
       }
 
-      // Create invoice object
+      // Create invoice object with all required fields
       const invoiceData = {
-        ...values,
+        customer_name: values.customer_name,
+        customer_email: values.customer_email || "",
+        customer_address: values.customer_address || "",
         invoice_date: format(values.invoice_date, "yyyy-MM-dd"),
         due_date: format(values.due_date, "yyyy-MM-dd"),
+        status: values.status,
+        notes: values.notes || "",
+        terms_conditions: values.terms_conditions || "",
         subtotal,
         tax_total: taxTotal,
-        discount_percent: discountPercent > 0 ? discountPercent : null,
-        discount_amount: discountAmount > 0 ? discountAmount : null,
+        discount_percent: discountPercent > 0 ? discountPercent : 0,
+        discount_amount: discountAmount > 0 ? discountAmount : 0,
         total_amount: totalAmount,
       };
 

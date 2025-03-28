@@ -21,6 +21,7 @@ import EmailMarketing from "./pages/EmailMarketing";
 import NotFound from "./pages/NotFound";
 import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
+import CreateInvoice from "./pages/CreateInvoice";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => {
               <Route path="/accounting" element={<Accounting />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/invoices/:id" element={<InvoiceDetail />} />
+              <Route path="/create-invoice" element={<CreateInvoice />} />
               <Route path="/crm" element={<Crm />} />
               <Route path="/email-marketing" element={<EmailMarketing />} />
               <Route path="/settings" element={<Settings />} />
