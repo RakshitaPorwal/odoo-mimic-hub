@@ -720,7 +720,7 @@ const Inventory = () => {
                                         <RefreshCcw className="h-4 w-4 mr-2" />
                                         Update Stock
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={()={() => handleMoveItem(item.id, item.location)}>
+                                      <DropdownMenuItem onClick={() => handleMoveItem(item.id, item.location)}>
                                         <ArrowUpDown className="h-4 w-4 mr-2" />
                                         Move Item
                                       </DropdownMenuItem>
