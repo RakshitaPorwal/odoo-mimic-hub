@@ -82,9 +82,8 @@ const TaskList: React.FC<TaskListProps> = ({
                 <Select
                   value={task.status}
                   onValueChange={(value) => onStatusChange(task.id, value as 'Not Started' | 'In Progress' | 'Completed')}
-                  className="w-32"
                 >
-                  <SelectTrigger className={`h-8 ${getStatusColor(task.status)}`}>
+                  <SelectTrigger className={getStatusColor(task.status)}>
                     <SelectValue placeholder={task.status} />
                   </SelectTrigger>
                   <SelectContent>

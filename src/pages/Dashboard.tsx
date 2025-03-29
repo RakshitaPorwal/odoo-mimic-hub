@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
 import { Button } from "@/components/ui/button";
@@ -25,9 +25,11 @@ import {
   Calendar,
   ClipboardList,
   Clock,
-  Plus
+  Plus,
+  ArrowRight
 } from "lucide-react";
 import TaskManager from "@/components/Task/TaskManager";
+import { Link } from "react-router-dom";
 
 const data = [
   { name: "Jan", revenue: 4000, expenses: 2400 },
@@ -36,6 +38,12 @@ const data = [
   { name: "Apr", revenue: 2780, expenses: 3908 },
   { name: "May", revenue: 1890, expenses: 4800 },
   { name: "Jun", revenue: 2390, expenses: 3800 },
+  { name: "Jul", revenue: 3490, expenses: 4300 },
+  { name: "Aug", revenue: 3890, expenses: 4200 },
+  { name: "Sep", revenue: 4290, expenses: 4100 },
+  { name: "Oct", revenue: 4690, expenses: 4500 },
+  { name: "Nov", revenue: 5290, expenses: 4700 },
+  { name: "Dec", revenue: 5890, expenses: 5100 },
 ];
 
 // Calculate total revenue
@@ -46,7 +54,7 @@ const lastMonthRevenue = data[data.length - 1].revenue;
 const previousMonthRevenue = data[data.length - 2].revenue;
 const revenueGrowth = ((lastMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
 
-// Mock customer data
+// Customer data
 const customerData = [
   { month: "Jan", count: 1900 },
   { month: "Feb", count: 2050 },
@@ -54,15 +62,21 @@ const customerData = [
   { month: "Apr", count: 2220 },
   { month: "May", count: 2280 },
   { month: "Jun", count: 2350 },
+  { month: "Jul", count: 2420 },
+  { month: "Aug", count: 2490 },
+  { month: "Sep", count: 2550 },
+  { month: "Oct", count: 2650 },
+  { month: "Nov", count: 2750 },
+  { month: "Dec", count: 2850 },
 ];
 
 // Calculate new customers and growth
-const newCustomers = customerData[customerData.length - 1].count;
+const newCustomers = customerData[customerData.length - 1].count - customerData[customerData.length - 2].count;
 const lastMonthCustomers = customerData[customerData.length - 1].count;
 const previousMonthCustomers = customerData[customerData.length - 2].count;
 const customerGrowth = ((lastMonthCustomers - previousMonthCustomers) / previousMonthCustomers) * 100;
 
-// Mock sales data
+// Sales data
 const salesData = [
   { month: "Jan", count: 10500 },
   { month: "Feb", count: 10890 },
@@ -70,6 +84,12 @@ const salesData = [
   { month: "Apr", count: 11600 },
   { month: "May", count: 11950 },
   { month: "Jun", count: 12234 },
+  { month: "Jul", count: 12600 },
+  { month: "Aug", count: 13000 },
+  { month: "Sep", count: 13400 },
+  { month: "Oct", count: 13900 },
+  { month: "Nov", count: 14500 },
+  { month: "Dec", count: 15200 },
 ];
 
 // Calculate total sales and growth
@@ -78,7 +98,7 @@ const lastMonthSales = salesData[salesData.length - 1].count;
 const previousMonthSales = salesData[salesData.length - 2].count;
 const salesGrowth = ((lastMonthSales - previousMonthSales) / previousMonthSales) * 100;
 
-// Mock active users data
+// Active users data
 const activeUsersData = [
   { week: "Week 1", count: 510 },
   { week: "Week 2", count: 530 },
@@ -98,7 +118,26 @@ const Dashboard = () => {
       <Header 
         title="Dashboard" 
         description="Welcome back, here's an overview of your business."
-      />
+      >
+        <Button 
+          size="sm" 
+          onClick={() => {
+            const taskTabElement = document.querySelector('[data-value="tasks"]');
+            if (taskTabElement) {
+              (taskTabElement as HTMLElement).click();
+              setTimeout(() => {
+                const newTaskButton = document.querySelector('.task-tab-content button');
+                if (newTaskButton) {
+                  (newTaskButton as HTMLElement).click();
+                }
+              }, 100);
+            }
+          }}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          New Task
+        </Button>
+      </Header>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="scale-enter">
@@ -131,7 +170,7 @@ const Dashboard = () => {
         </Card>
         <Card className="scale-enter" style={{ animationDelay: "0.2s" }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sales</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -163,15 +202,21 @@ const Dashboard = () => {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="tasks">Tasks</TabsTrigger>
+          <TabsTrigger value="tasks" data-value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-4 scale-enter">
-              <CardHeader>
+              <CardHeader className="flex justify-between items-center">
                 <CardTitle>Revenue Overview</CardTitle>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/revenue-report">
+                    View Full Report
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
               </CardHeader>
               <CardContent className="pl-2">
                 <ResponsiveContainer width="100%" height={300}>
@@ -187,8 +232,14 @@ const Dashboard = () => {
               </CardContent>
             </Card>
             <Card className="col-span-3 scale-enter" style={{ animationDelay: "0.1s" }}>
-              <CardHeader>
+              <CardHeader className="flex justify-between items-center">
                 <CardTitle>Recent Tasks</CardTitle>
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/task-report">
+                    View All Tasks
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
               </CardHeader>
               <CardContent>
                 <TaskManager />
@@ -263,7 +314,7 @@ const Dashboard = () => {
           </Card>
         </TabsContent>
         
-        <TabsContent value="tasks">
+        <TabsContent value="tasks" className="task-tab-content">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Task Management</CardTitle>
@@ -286,13 +337,17 @@ const Dashboard = () => {
             <CardContent>
               <p className="text-muted-foreground mb-4">Select a report to view detailed information</p>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
-                  <ClipboardList className="mr-2 h-4 w-4" />
-                  Sales Report
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/revenue-report">
+                    <ClipboardList className="mr-2 h-4 w-4" />
+                    Revenue Report
+                  </Link>
                 </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Users className="mr-2 h-4 w-4" />
-                  Customer Analytics
+                <Button variant="outline" className="w-full justify-start" asChild>
+                  <Link to="/task-report">
+                    <Users className="mr-2 h-4 w-4" />
+                    Task Report
+                  </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <DollarSign className="mr-2 h-4 w-4" />

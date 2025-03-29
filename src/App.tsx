@@ -23,6 +23,8 @@ import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import CreateInvoice from "./pages/CreateInvoice";
 import Reports from "./pages/Reports";
+import TaskReport from "./pages/TaskReport";
+import RevenueReport from "./pages/RevenueReport";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +54,8 @@ const App = () => {
               <Route path="/crm" element={<Crm />} />
               <Route path="/email-marketing" element={<EmailMarketing />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/task-report" element={<TaskReport />} />
+              <Route path="/revenue-report" element={<RevenueReport />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
