@@ -136,7 +136,7 @@ export default function Inventory() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    let parsedValue = value;
+    let parsedValue: string | number = value;
     
     // Parse numeric values
     if (["stock", "value", "reorder_level", "reorder_quantity", "cgst_rate", "sgst_rate"].includes(name)) {
@@ -323,7 +323,7 @@ export default function Inventory() {
                         <SelectValue placeholder="All Categories" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Categories</SelectItem>
+                        <SelectItem value="all-categories">All Categories</SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category} value={category || "unknown"}>
                             {category || "Uncategorized"}
@@ -340,7 +340,7 @@ export default function Inventory() {
                         <SelectValue placeholder="All Locations" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Locations</SelectItem>
+                        <SelectItem value="all-locations">All Locations</SelectItem>
                         {locations.map((location) => (
                           <SelectItem key={location} value={location || "unknown"}>
                             {location || "Unspecified"}
@@ -357,7 +357,7 @@ export default function Inventory() {
                         <SelectValue placeholder="All Stock Levels" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Stock Levels</SelectItem>
+                        <SelectItem value="all-stock">All Stock Levels</SelectItem>
                         <SelectItem value="in">In Stock</SelectItem>
                         <SelectItem value="low">Low Stock</SelectItem>
                         <SelectItem value="out">Out of Stock</SelectItem>
@@ -448,7 +448,7 @@ export default function Inventory() {
                                         <Button variant="ghost" size="icon">
                                           <span className="sr-only">Open menu</span>
                                           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m1 1 4 4 4-4"/>
                                           </svg>
                                         </Button>
                                       </DropdownMenuTrigger>
@@ -498,7 +498,7 @@ export default function Inventory() {
                                     <Button variant="ghost" size="icon">
                                       <span className="sr-only">Open menu</span>
                                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m1 1 4 4 4-4"/>
                                       </svg>
                                     </Button>
                                   </DropdownMenuTrigger>
