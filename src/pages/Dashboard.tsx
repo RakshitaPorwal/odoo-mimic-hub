@@ -17,7 +17,6 @@ import {
   Line
 } from "recharts";
 import { 
-  Plus,
   ArrowUpRight,
   TrendingUp,
   Users,
@@ -25,8 +24,10 @@ import {
   DollarSign,
   Calendar,
   ClipboardList,
-  Clock
+  Clock,
+  Plus
 } from "lucide-react";
+import TaskManager from "@/components/Task/TaskManager";
 
 const data = [
   { name: "Jan", revenue: 4000, expenses: 2400 },
@@ -37,11 +38,59 @@ const data = [
   { name: "Jun", revenue: 2390, expenses: 3800 },
 ];
 
-const taskData = [
-  { id: 1, title: "Review Q2 Sales Report", priority: "High", due: "Today", status: "In Progress" },
-  { id: 2, title: "Prepare Client Presentation", priority: "Medium", due: "Tomorrow", status: "Not Started" },
-  { id: 3, title: "Update Inventory Records", priority: "Low", due: "Next Week", status: "Not Started" },
+// Calculate total revenue
+const totalRevenue = data.reduce((sum, item) => sum + item.revenue, 0);
+
+// Calculate growth percentages (comparing last two months)
+const lastMonthRevenue = data[data.length - 1].revenue;
+const previousMonthRevenue = data[data.length - 2].revenue;
+const revenueGrowth = ((lastMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100;
+
+// Mock customer data
+const customerData = [
+  { month: "Jan", count: 1900 },
+  { month: "Feb", count: 2050 },
+  { month: "Mar", count: 2150 },
+  { month: "Apr", count: 2220 },
+  { month: "May", count: 2280 },
+  { month: "Jun", count: 2350 },
 ];
+
+// Calculate new customers and growth
+const newCustomers = customerData[customerData.length - 1].count;
+const lastMonthCustomers = customerData[customerData.length - 1].count;
+const previousMonthCustomers = customerData[customerData.length - 2].count;
+const customerGrowth = ((lastMonthCustomers - previousMonthCustomers) / previousMonthCustomers) * 100;
+
+// Mock sales data
+const salesData = [
+  { month: "Jan", count: 10500 },
+  { month: "Feb", count: 10890 },
+  { month: "Mar", count: 11230 },
+  { month: "Apr", count: 11600 },
+  { month: "May", count: 11950 },
+  { month: "Jun", count: 12234 },
+];
+
+// Calculate total sales and growth
+const totalSales = salesData[salesData.length - 1].count;
+const lastMonthSales = salesData[salesData.length - 1].count;
+const previousMonthSales = salesData[salesData.length - 2].count;
+const salesGrowth = ((lastMonthSales - previousMonthSales) / previousMonthSales) * 100;
+
+// Mock active users data
+const activeUsersData = [
+  { week: "Week 1", count: 510 },
+  { week: "Week 2", count: 530 },
+  { week: "Week 3", count: 550 },
+  { week: "Week 4", count: 573 },
+];
+
+// Calculate active users and growth
+const activeUsers = activeUsersData[activeUsersData.length - 1].count;
+const lastWeekUsers = activeUsersData[activeUsersData.length - 1].count;
+const previousWeekUsers = activeUsersData[activeUsersData.length - 2].count;
+const userGrowth = ((lastWeekUsers - previousWeekUsers) / previousWeekUsers) * 100;
 
 const Dashboard = () => {
   return (
@@ -49,12 +98,7 @@ const Dashboard = () => {
       <Header 
         title="Dashboard" 
         description="Welcome back, here's an overview of your business."
-      >
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          New Task
-        </Button>
-      </Header>
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="scale-enter">
@@ -63,10 +107,10 @@ const Dashboard = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$45,231.89</div>
+            <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium flex items-center">
-                +20.1% <ArrowUpRight className="h-3 w-3 ml-1" />
+              <span className={`${revenueGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium flex items-center`}>
+                {revenueGrowth >= 0 ? '+' : ''}{revenueGrowth.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
               </span> from last month
             </p>
           </CardContent>
@@ -77,10 +121,10 @@ const Dashboard = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+2,350</div>
+            <div className="text-2xl font-bold">+{newCustomers.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium flex items-center">
-                +10.5% <ArrowUpRight className="h-3 w-3 ml-1" />
+              <span className={`${customerGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium flex items-center`}>
+                {customerGrowth >= 0 ? '+' : ''}{customerGrowth.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
               </span> from last month
             </p>
           </CardContent>
@@ -91,10 +135,10 @@ const Dashboard = () => {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+12,234</div>
+            <div className="text-2xl font-bold">+{totalSales.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium flex items-center">
-                +15.3% <ArrowUpRight className="h-3 w-3 ml-1" />
+              <span className={`${salesGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium flex items-center`}>
+                {salesGrowth >= 0 ? '+' : ''}{salesGrowth.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
               </span> from last month
             </p>
           </CardContent>
@@ -105,10 +149,10 @@ const Dashboard = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+573</div>
+            <div className="text-2xl font-bold">+{activeUsers}</div>
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium flex items-center">
-                +8.2% <ArrowUpRight className="h-3 w-3 ml-1" />
+              <span className={`${userGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium flex items-center`}>
+                {userGrowth >= 0 ? '+' : ''}{userGrowth.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
               </span> from last week
             </p>
           </CardContent>
@@ -119,8 +163,10 @@ const Dashboard = () => {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="tasks">Tasks</TabsTrigger>
           <TabsTrigger value="reports">Reports</TabsTrigger>
         </TabsList>
+        
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
             <Card className="col-span-4 scale-enter">
@@ -142,33 +188,10 @@ const Dashboard = () => {
             </Card>
             <Card className="col-span-3 scale-enter" style={{ animationDelay: "0.1s" }}>
               <CardHeader>
-                <CardTitle>Tasks</CardTitle>
+                <CardTitle>Recent Tasks</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {taskData.map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                      <div className="flex items-start space-x-3">
-                        <div className={`w-2 h-2 mt-1.5 rounded-full ${
-                          task.priority === "High" ? "bg-red-500" :
-                          task.priority === "Medium" ? "bg-yellow-500" : "bg-green-500"
-                        }`}></div>
-                        <div>
-                          <h4 className="font-medium text-sm">{task.title}</h4>
-                          <p className="text-xs text-muted-foreground">Due: {task.due}</p>
-                        </div>
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        task.status === "In Progress" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
-                      }`}>
-                        {task.status}
-                      </span>
-                    </div>
-                  ))}
-                  <Button variant="outline" size="sm" className="w-full">
-                    View All Tasks
-                  </Button>
-                </div>
+                <TaskManager />
               </CardContent>
             </Card>
           </div>
@@ -219,6 +242,7 @@ const Dashboard = () => {
             </Card>
           </div>
         </TabsContent>
+        
         <TabsContent value="analytics">
           <Card>
             <CardHeader>
@@ -238,6 +262,22 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </TabsContent>
+        
+        <TabsContent value="tasks">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Task Management</CardTitle>
+              <Button size="sm">
+                <Plus className="mr-2 h-4 w-4" />
+                New Task
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <TaskManager />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
         <TabsContent value="reports">
           <Card>
             <CardHeader>
