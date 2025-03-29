@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
 import { Button } from "@/components/ui/button";
@@ -11,14 +11,15 @@ import {
   FileImage,
   FilePlus,
   FileSpreadsheet,
-  Presentation, // Changed from FilePresentation to Presentation
+  Presentation,
   Folder,
   MoreVertical,
   Calendar,
   Download,
   Star,
   StarOff,
-  Users
+  Users,
+  Upload
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -28,6 +29,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 const documentData = [
   {
@@ -62,7 +73,7 @@ const documentData = [
     id: 3,
     name: "Product Roadmap 2023.pptx",
     type: "presentation",
-    icon: Presentation, // Changed from FilePresentation to Presentation
+    icon: Presentation,
     size: "4.5 MB",
     created: "2023-05-22",
     modified: "2023-06-15",
@@ -159,6 +170,10 @@ const Documents = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [documents, setDocuments] = useState(documentData);
   const [view, setView] = useState("grid");
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const { toast } = useToast();
   
   const filteredDocuments = documents.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -184,6 +199,83 @@ const Documents = () => {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleUploadClick = () => {
+    setIsUploadDialogOpen(true);
+  };
+
+  const handleBrowseClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleUploadSubmit = () => {
+    if (!selectedFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select a file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Get the file type to determine the icon
+    const fileName = selectedFile.name;
+    const fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
+    
+    let fileType = "document";
+    let fileIcon = FileText;
+    
+    if (['xlsx', 'xls', 'csv'].includes(fileExtension)) {
+      fileType = "spreadsheet";
+      fileIcon = FileSpreadsheet;
+    } else if (['pptx', 'ppt'].includes(fileExtension)) {
+      fileType = "presentation";
+      fileIcon = Presentation;
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(fileExtension)) {
+      fileType = "image";
+      fileIcon = FileImage;
+    } else if (['pdf'].includes(fileExtension)) {
+      fileType = "pdf";
+      fileIcon = File;
+    }
+
+    // Create a new document object
+    const newDocument = {
+      id: documents.length + 1,
+      name: fileName,
+      type: fileType,
+      icon: fileIcon,
+      size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`,
+      created: new Date().toISOString().split('T')[0],
+      modified: new Date().toISOString().split('T')[0],
+      owner: "You",
+      shared: false,
+      starred: false,
+      category: "uploads",
+      folder: "Uploads"
+    };
+
+    // Add the new document to the documents array
+    setDocuments([newDocument, ...documents]);
+
+    // Close the dialog and reset the selected file
+    setIsUploadDialogOpen(false);
+    setSelectedFile(null);
+    
+    // Show a success toast
+    toast({
+      title: "File uploaded",
+      description: `${fileName} has been uploaded successfully`,
+    });
+  };
+
   return (
     <Layout>
       <Header 
@@ -198,6 +290,11 @@ const Documents = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleUploadClick}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload File
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem>
               <FileText className="h-4 w-4 mr-2" />
               Document
@@ -658,6 +755,64 @@ const Documents = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* File Upload Dialog */}
+      <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Upload Document</DialogTitle>
+            <DialogDescription>
+              Select a file from your computer to upload to your documents.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-6">
+            <div 
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary cursor-pointer transition-colors"
+              onClick={handleBrowseClick}
+            >
+              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              
+              <div className="space-y-2">
+                <p className="text-sm font-medium">
+                  {selectedFile ? (
+                    <span className="text-primary">{selectedFile.name}</span>
+                  ) : (
+                    <span>Drag and drop or click to upload</span>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Supports all file types up to 10MB
+                </p>
+              </div>
+              
+              <input 
+                type="file" 
+                className="hidden" 
+                ref={fileInputRef} 
+                onChange={handleFileChange}
+              />
+              
+              {selectedFile && (
+                <div className="mt-4 text-xs text-muted-foreground">
+                  <p>Size: {(selectedFile.size / 1024).toFixed(1)} KB</p>
+                  <p>Type: {selectedFile.type || "Unknown"}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleUploadSubmit} disabled={!selectedFile}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 };
