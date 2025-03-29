@@ -5,6 +5,13 @@ import { Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface TaskListProps {
   tasks: Task[];
@@ -114,8 +121,5 @@ const TaskList: React.FC<TaskListProps> = ({
     </div>
   );
 };
-
-// Fix missing import
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default TaskList;
