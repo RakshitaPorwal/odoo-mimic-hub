@@ -87,15 +87,16 @@ const InvoiceItemRow: React.FC<InvoiceItemRowProps> = ({
       <td className="px-2 py-2">
         <div className="flex flex-col space-y-2">
           <Select
-            value={item.item_id?.toString() || ""}
+            value={item.item_id?.toString() || "none"}
             onValueChange={(value) => 
-              handleItemSelect(index, value ? parseInt(value) : null)
+              handleItemSelect(index, value !== "none" ? parseInt(value) : null)
             }
           >
             <SelectTrigger className="h-9">
               <SelectValue placeholder="Select an item" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">Select an item</SelectItem>
               {inventoryItems.map((invItem) => (
                 <SelectItem key={invItem.id} value={invItem.id.toString()}>
                   {invItem.name}
