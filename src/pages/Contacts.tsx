@@ -2,30 +2,28 @@
 import React, { useState } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Plus, 
-  Search, 
-  Phone, 
-  Mail, 
-  Star, 
-  Filter, 
-  Download, 
-  Upload, 
-  MoreHorizontal,
-  Star as StarIcon,
-  Building,
-  User,
-  MapPin
-} from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Search,
+  Plus,
+  Phone,
+  Mail,
+  Star,
+  Building,
+  MapPin,
+  UserCircle,
+  Edit,
+  Trash,
+  Filter,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -37,85 +35,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
-// Mock contact data
-const contactsData = [
-  {
-    id: 1,
-    name: "John Doe",
-    avatar: "JD",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    company: "Acme Inc.",
-    position: "CEO",
-    address: "123 Business Ave, New York, NY",
-    type: "Customer",
-    starred: true,
-    tags: ["VIP", "Enterprise"],
-  },
-  {
-    id: 2,
-    name: "Jane Smith",
-    avatar: "JS",
-    email: "jane.smith@example.com",
-    phone: "+1 (555) 987-6543",
-    company: "Tech Solutions Ltd.",
-    position: "CTO",
-    address: "456 Tech Blvd, San Francisco, CA",
-    type: "Customer",
-    starred: false,
-    tags: ["Enterprise"],
-  },
-  {
-    id: 3,
-    name: "Mike Johnson",
-    avatar: "MJ",
-    email: "mike.johnson@example.com",
-    phone: "+1 (555) 567-8901",
-    company: "Supply Chain Co.",
-    position: "Purchasing Manager",
-    address: "789 Commerce St, Chicago, IL",
-    type: "Vendor",
-    starred: true,
-    tags: ["Supplier"],
-  },
-  {
-    id: 4,
-    name: "Lisa Brown",
-    avatar: "LB",
-    email: "lisa.brown@example.com",
-    phone: "+1 (555) 234-5678",
-    company: "Marketing Experts",
-    position: "Marketing Director",
-    address: "321 Media Lane, Austin, TX",
-    type: "Prospect",
-    starred: false,
-    tags: ["Lead", "Marketing"],
-  },
-  {
-    id: 5,
-    name: "David Miller",
-    avatar: "DM",
-    email: "david.miller@example.com",
-    phone: "+1 (555) 345-6789",
-    company: "Financial Services Inc.",
-    position: "Financial Advisor",
-    address: "654 Money Way, Boston, MA",
-    type: "Customer",
-    starred: false,
-    tags: ["Finance"],
-  },
-];
-
+// Define the contact type
 type ContactType = "Customer" | "Vendor" | "Prospect";
 
 interface Contact {
@@ -133,13 +68,84 @@ interface Contact {
 }
 
 const Contacts = () => {
-  const [contacts, setContacts] = useState<Contact[]>(contactsData);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [filter, setFilter] = useState<ContactType | "All">("All");
-  const [newContact, setNewContact] = useState<Omit<Contact, "id" | "avatar">>({
+  const [filterType, setFilterType] = useState<string | null>(null);
+  const [onlyStarred, setOnlyStarred] = useState(false);
+  const [isAddingContact, setIsAddingContact] = useState(false);
+  
+  // Sample contact data
+  const [contacts, setContacts] = useState<Contact[]>([
+    {
+      id: 1,
+      name: "John Smith",
+      avatar: "",
+      email: "john.smith@example.com",
+      phone: "+1 (555) 123-4567",
+      company: "Acme Inc.",
+      position: "Sales Manager",
+      address: "123 Business St, New York, NY 10001",
+      type: "Customer",
+      starred: true,
+      tags: ["VIP", "Enterprise"]
+    },
+    {
+      id: 2,
+      name: "Jane Doe",
+      avatar: "",
+      email: "jane.doe@example.com",
+      phone: "+1 (555) 987-6543",
+      company: "Global Tech",
+      position: "CTO",
+      address: "456 Tech Ave, San Francisco, CA 94107",
+      type: "Prospect",
+      starred: false,
+      tags: ["Technology", "Lead"]
+    },
+    {
+      id: 3,
+      name: "Robert Johnson",
+      avatar: "",
+      email: "robert.johnson@example.com",
+      phone: "+1 (555) 567-8901",
+      company: "Supply Solutions",
+      position: "Account Manager",
+      address: "789 Supply Rd, Chicago, IL 60601",
+      type: "Vendor",
+      starred: true,
+      tags: ["Office Supplies"]
+    },
+    {
+      id: 4,
+      name: "Emily Chen",
+      avatar: "",
+      email: "emily.chen@example.com",
+      phone: "+1 (555) 234-5678",
+      company: "Innovative Designs",
+      position: "Creative Director",
+      address: "321 Creative Blvd, Austin, TX 78701",
+      type: "Customer",
+      starred: false,
+      tags: ["Design", "Small Business"]
+    },
+    {
+      id: 5,
+      name: "Michael Rodriguez",
+      avatar: "",
+      email: "michael.rodriguez@example.com",
+      phone: "+1 (555) 345-6789",
+      company: "Rodriguez Consulting",
+      position: "CEO",
+      address: "654 Consulting Way, Miami, FL 33101",
+      type: "Prospect",
+      starred: true,
+      tags: ["Consulting", "VIP"]
+    }
+  ]);
+  
+  // New contact form state
+  const [newContact, setNewContact] = useState<Omit<Contact, "id">>({
     name: "",
+    avatar: "",
     email: "",
     phone: "",
     company: "",
@@ -147,13 +153,48 @@ const Contacts = () => {
     address: "",
     type: "Customer",
     starred: false,
-    tags: [],
+    tags: []
   });
-  const [tagInput, setTagInput] = useState("");
-
-  const handleClearForm = () => {
+  
+  // Filter contacts based on search and filter criteria
+  const filteredContacts = contacts.filter(contact => {
+    const matchesSearch = 
+      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.phone.includes(searchTerm);
+    
+    const matchesType = filterType ? contact.type === filterType : true;
+    const matchesStarred = onlyStarred ? contact.starred : true;
+    
+    return matchesSearch && matchesType && matchesStarred;
+  });
+  
+  // Handle adding a new contact
+  const handleAddContact = () => {
+    if (!newContact.name || !newContact.phone) {
+      toast({
+        title: "Required fields missing",
+        description: "Please fill in at least the name and phone number",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setContacts([
+      ...contacts,
+      {
+        ...newContact,
+        id: contacts.length > 0 ? Math.max(...contacts.map(c => c.id)) + 1 : 1
+      }
+    ]);
+    
+    setIsAddingContact(false);
+    
+    // Reset form
     setNewContact({
       name: "",
+      avatar: "",
       email: "",
       phone: "",
       company: "",
@@ -161,137 +202,119 @@ const Contacts = () => {
       address: "",
       type: "Customer",
       starred: false,
-      tags: [],
+      tags: []
     });
-    setTagInput("");
-  };
-
-  const handleAddContact = () => {
-    if (!newContact.name || !newContact.email || !newContact.phone) {
-      return; // In a real app, show validation errors
-    }
-
-    const avatar = newContact.name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-
-    const newContactWithId = {
-      ...newContact,
-      id: contacts.length > 0 ? Math.max(...contacts.map((c) => c.id)) + 1 : 1,
-      avatar,
-    };
-
-    setContacts([newContactWithId, ...contacts]);
-    setIsAddDialogOpen(false);
-    handleClearForm();
-  };
-
-  const handleToggleStar = (id: number) => {
-    setContacts(
-      contacts.map((contact) =>
-        contact.id === id
-          ? { ...contact, starred: !contact.starred }
-          : contact
-      )
-    );
-  };
-
-  const handleDeleteContact = (id: number) => {
-    setContacts(contacts.filter((contact) => contact.id !== id));
-    if (selectedContact?.id === id) {
-      setSelectedContact(null);
-    }
-  };
-
-  const handleAddTag = () => {
-    if (tagInput.trim() && !newContact.tags.includes(tagInput.trim())) {
-      setNewContact({
-        ...newContact,
-        tags: [...newContact.tags, tagInput.trim()],
-      });
-      setTagInput("");
-    }
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    setNewContact({
-      ...newContact,
-      tags: newContact.tags.filter((t) => t !== tag),
+    
+    toast({
+      title: "Contact added",
+      description: `${newContact.name} has been added to your contacts`
     });
   };
-
-  const filteredContacts = contacts.filter((contact) => {
-    const matchesSearch =
-      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.company.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesFilter = filter === "All" || contact.type === filter;
-
-    return matchesSearch && matchesFilter;
-  });
-
-  const handleCallViaWhatsApp = (phone: string) => {
-    // In a real app, this would open WhatsApp with the appropriate phone number
-    window.open(`https://wa.me/${phone.replace(/\D/g, "")}`, "_blank");
+  
+  // Handle toggling a contact's starred status
+  const toggleStarred = (contactId: number) => {
+    setContacts(contacts.map(contact => 
+      contact.id === contactId 
+        ? { ...contact, starred: !contact.starred } 
+        : contact
+    ));
   };
-
-  const handleEmailViaOutlook = (email: string) => {
-    // In a real app, this would open Outlook with the appropriate email
-    window.open(`mailto:${email}`, "_blank");
+  
+  // Handle calling a contact via WhatsApp
+  const callWhatsApp = (phone: string) => {
+    // In a real app, this would open WhatsApp with the phone number
+    window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
+    toast({
+      title: "Opening WhatsApp",
+      description: `Starting a call with ${phone}`
+    });
+  };
+  
+  // Handle emailing a contact via Outlook
+  const emailOutlook = (email: string) => {
+    // In a real app, this would open the default email client
+    window.open(`mailto:${email}`, '_blank');
+    toast({
+      title: "Opening email client",
+      description: `Composing an email to ${email}`
+    });
+  };
+  
+  // Handle deleting a contact
+  const deleteContact = (contactId: number) => {
+    const contactToDelete = contacts.find(c => c.id === contactId);
+    if (!contactToDelete) return;
+    
+    setContacts(contacts.filter(contact => contact.id !== contactId));
+    toast({
+      title: "Contact deleted",
+      description: `${contactToDelete.name} has been removed from your contacts`
+    });
   };
 
   return (
     <Layout>
       <Header 
         title="Contacts" 
-        description="Manage your contacts and keep in touch with customers, vendors, and prospects."
+        description="Manage your customers, vendors, and prospects."
       >
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={isAddingContact} onOpenChange={setIsAddingContact}>
           <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Contact
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Add Contact
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Add New Contact</DialogTitle>
               <DialogDescription>
-                Fill out the form below to add a new contact to your list.
+                Fill in the details to add a new contact.
               </DialogDescription>
             </DialogHeader>
-
+            
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-right">
-                    Name *
-                  </Label>
-                  <Input
-                    id="name"
+                  <Label htmlFor="name">Full Name *</Label>
+                  <Input 
+                    id="name" 
                     value={newContact.name}
-                    onChange={(e) =>
-                      setNewContact({ ...newContact, name: e.target.value })
-                    }
-                    placeholder="Full name"
+                    onChange={(e) => setNewContact({...newContact, name: e.target.value})}
+                    placeholder="John Smith"
                   />
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="type" className="text-right">
-                    Contact Type *
-                  </Label>
-                  <Select
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Input 
+                    id="phone" 
+                    value={newContact.phone}
+                    onChange={(e) => setNewContact({...newContact, phone: e.target.value})}
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input 
+                    id="email" 
+                    type="email"
+                    value={newContact.email}
+                    onChange={(e) => setNewContact({...newContact, email: e.target.value})}
+                    placeholder="john.smith@example.com"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="type">Contact Type</Label>
+                  <Select 
                     value={newContact.type}
-                    onValueChange={(value: ContactType) =>
-                      setNewContact({ ...newContact, type: value })
-                    }
+                    onValueChange={(value) => setNewContact({...newContact, type: value as ContactType})}
                   >
                     <SelectTrigger id="type">
-                      <SelectValue placeholder="Select a type" />
+                      <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Customer">Customer</SelectItem>
@@ -301,456 +324,349 @@ const Contacts = () => {
                   </Select>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-right">
-                    Email *
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newContact.email}
-                    onChange={(e) =>
-                      setNewContact({ ...newContact, email: e.target.value })
-                    }
-                    placeholder="Email address"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-right">
-                    Phone *
-                  </Label>
-                  <Input
-                    id="phone"
-                    value={newContact.phone}
-                    onChange={(e) =>
-                      setNewContact({ ...newContact, phone: e.target.value })
-                    }
-                    placeholder="Phone number"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="company" className="text-right">
-                    Company
-                  </Label>
-                  <Input
-                    id="company"
+                  <Label htmlFor="company">Company</Label>
+                  <Input 
+                    id="company" 
                     value={newContact.company}
-                    onChange={(e) =>
-                      setNewContact({ ...newContact, company: e.target.value })
-                    }
-                    placeholder="Company name"
+                    onChange={(e) => setNewContact({...newContact, company: e.target.value})}
+                    placeholder="Acme Inc."
                   />
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="position" className="text-right">
-                    Position
-                  </Label>
-                  <Input
-                    id="position"
+                  <Label htmlFor="position">Position/Designation</Label>
+                  <Input 
+                    id="position" 
                     value={newContact.position}
-                    onChange={(e) =>
-                      setNewContact({ ...newContact, position: e.target.value })
-                    }
-                    placeholder="Job title"
+                    onChange={(e) => setNewContact({...newContact, position: e.target.value})}
+                    placeholder="Sales Manager"
                   />
                 </div>
               </div>
-
+              
               <div className="space-y-2">
-                <Label htmlFor="address" className="text-right">
-                  Address
-                </Label>
+                <Label htmlFor="address">Address</Label>
                 <Textarea
                   id="address"
                   value={newContact.address}
-                  onChange={(e) =>
-                    setNewContact({ ...newContact, address: e.target.value })
-                  }
-                  placeholder="Full address"
-                  rows={2}
+                  onChange={(e) => setNewContact({...newContact, address: e.target.value})}
+                  placeholder="123 Business St, New York, NY 10001"
+                  rows={3}
                 />
               </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="tags" className="text-right">
-                    Tags
-                  </Label>
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      id="tags"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      placeholder="Add a tag"
-                      className="w-40"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddTag();
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={handleAddTag}
-                    >
-                      Add
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {newContact.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="px-2 py-1">
-                      {tag}
-                      <button
-                        type="button"
-                        className="ml-1 text-muted-foreground"
-                        onClick={() => handleRemoveTag(tag)}
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center">
+              
+              <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   id="starred"
                   checked={newContact.starred}
-                  onChange={(e) =>
-                    setNewContact({ ...newContact, starred: e.target.checked })
-                  }
-                  className="mr-2"
+                  onChange={(e) => setNewContact({...newContact, starred: e.target.checked})}
+                  className="rounded border-gray-300"
                 />
-                <Label htmlFor="starred" className="cursor-pointer">
-                  Mark as starred contact
-                </Label>
+                <Label htmlFor="starred">Mark as starred</Label>
               </div>
             </div>
-
-            <DialogFooter className="flex space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setIsAddDialogOpen(false);
-                  handleClearForm();
-                }}
-              >
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddingContact(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleAddContact}>Add Contact</Button>
+              <Button onClick={handleAddContact}>
+                Add Contact
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </Header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Search and filter sidebar */}
-        <div className="md:col-span-1">
-          <Card>
-            <CardContent className="p-4 space-y-4">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search contacts..."
-                  className="pl-8"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label className="block mb-2">Filter by Type</Label>
-                <Tabs
-                  defaultValue="All"
-                  value={filter}
-                  onValueChange={(value) => setFilter(value as ContactType | "All")}
-                  className="w-full"
-                >
-                  <TabsList className="grid grid-cols-4 w-full">
-                    <TabsTrigger value="All">All</TabsTrigger>
-                    <TabsTrigger value="Customer">Customers</TabsTrigger>
-                    <TabsTrigger value="Vendor">Vendors</TabsTrigger>
-                    <TabsTrigger value="Prospect">Prospects</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-
-              <div className="flex gap-2 mt-4">
-                <Button variant="outline" className="flex-1">
+      <div className="p-4 space-y-6">
+        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search contacts..."
+              className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex flex-wrap gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
                   <Filter className="h-4 w-4 mr-2" />
-                  More Filters
+                  Filter
                 </Button>
-                <Button variant="outline" className="flex-1">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import
-                </Button>
-              </div>
-
-              <div className="pt-4 mt-4 border-t">
-                <h3 className="font-medium text-sm mb-2">Quick Stats</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="p-2 bg-muted rounded">
-                    <div className="text-xs text-muted-foreground">Total</div>
-                    <div className="text-xl font-semibold">{contacts.length}</div>
-                  </div>
-                  <div className="p-2 bg-muted rounded">
-                    <div className="text-xs text-muted-foreground">Customers</div>
-                    <div className="text-xl font-semibold">
-                      {contacts.filter((c) => c.type === "Customer").length}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Contact Type</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setFilterType(null)}>
+                  All Contacts
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilterType("Customer")}>
+                  Customers Only
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilterType("Vendor")}>
+                  Vendors Only
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setFilterType("Prospect")}>
+                  Prospects Only
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setOnlyStarred(!onlyStarred)}>
+                  {onlyStarred ? "Show All" : "Show Starred Only"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button variant="outline" size="sm" onClick={() => setSearchTerm("")}>
+              Clear Filters
+            </Button>
+          </div>
         </div>
-
-        {/* Contacts list */}
-        <div className="md:col-span-2">
-          {filteredContacts.length === 0 ? (
-            <div className="text-center p-8 border rounded-lg bg-white">
-              <div className="text-muted-foreground mb-2">No contacts found</div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Try adjusting your search or filters to find what you're looking for.
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setSearchTerm("");
-                  setFilter("All");
-                }}
-              >
-                Clear filters
-              </Button>
+        
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="w-full md:w-[400px]">
+            <TabsTrigger value="all">All Contacts</TabsTrigger>
+            <TabsTrigger value="customers">Customers</TabsTrigger>
+            <TabsTrigger value="vendors">Vendors</TabsTrigger>
+            <TabsTrigger value="prospects">Prospects</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredContacts.length > 0 ? (
+                filteredContacts.map((contact) => (
+                  <ContactCard 
+                    key={contact.id}
+                    contact={contact}
+                    onToggleStar={() => toggleStarred(contact.id)}
+                    onCall={() => callWhatsApp(contact.phone)}
+                    onEmail={() => emailOutlook(contact.email)}
+                    onDelete={() => deleteContact(contact.id)}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-10">
+                  <UserCircle className="h-12 w-12 mx-auto text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium">No contacts found</h3>
+                  <p className="text-sm text-gray-500 mt-1">Try adjusting your search or filters</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredContacts.map((contact) => (
-                <Card key={contact.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex justify-between">
-                      <div className="flex space-x-4">
-                        <div className="flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-lg">
-                            {contact.avatar}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex items-center">
-                            <h3 className="font-medium">{contact.name}</h3>
-                            <button
-                              onClick={() => handleToggleStar(contact.id)}
-                              className="ml-2"
-                            >
-                              <Star
-                                className={`h-4 w-4 ${
-                                  contact.starred
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-muted-foreground"
-                                }`}
-                              />
-                            </button>
-                            <Badge
-                              variant="outline"
-                              className="ml-2"
-                            >
-                              {contact.type}
-                            </Badge>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2 mt-2">
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Phone className="h-3.5 w-3.5 mr-1" />
-                              {contact.phone}
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Mail className="h-3.5 w-3.5 mr-1" />
-                              {contact.email}
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Building className="h-3.5 w-3.5 mr-1" />
-                              {contact.company}
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <User className="h-3.5 w-3.5 mr-1" />
-                              {contact.position}
-                            </div>
-                          </div>
-                          <div className="flex items-start text-sm text-muted-foreground mt-1">
-                            <MapPin className="h-3.5 w-3.5 mr-1 mt-0.5" />
-                            <span className="line-clamp-1">{contact.address}</span>
-                          </div>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {contact.tags.map((tag) => (
-                              <Badge key={tag} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex space-x-1">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleCallViaWhatsApp(contact.phone)}
-                            title="WhatsApp Call"
-                          >
-                            <Phone className="h-4 w-4 text-green-600" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleEmailViaOutlook(contact.email)}
-                            title="Email with Outlook"
-                          >
-                            <Mail className="h-4 w-4 text-blue-600" />
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="outline" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => setSelectedContact(contact)}
-                              >
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>Edit Contact</DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={() => handleDeleteContact(contact.id)}
-                              >
-                                Delete Contact
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          </TabsContent>
+          
+          <TabsContent value="customers" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredContacts.filter(c => c.type === "Customer").length > 0 ? (
+                filteredContacts
+                  .filter(c => c.type === "Customer")
+                  .map((contact) => (
+                    <ContactCard 
+                      key={contact.id}
+                      contact={contact}
+                      onToggleStar={() => toggleStarred(contact.id)}
+                      onCall={() => callWhatsApp(contact.phone)}
+                      onEmail={() => emailOutlook(contact.email)}
+                      onDelete={() => deleteContact(contact.id)}
+                    />
+                  ))
+              ) : (
+                <div className="col-span-full text-center py-10">
+                  <Building className="h-12 w-12 mx-auto text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium">No customers found</h3>
+                  <p className="text-sm text-gray-500 mt-1">Add some customers to see them here</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="vendors" className="mt-6">
+            {/* Similar structure for vendors */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredContacts.filter(c => c.type === "Vendor").length > 0 ? (
+                filteredContacts
+                  .filter(c => c.type === "Vendor")
+                  .map((contact) => (
+                    <ContactCard 
+                      key={contact.id}
+                      contact={contact}
+                      onToggleStar={() => toggleStarred(contact.id)}
+                      onCall={() => callWhatsApp(contact.phone)}
+                      onEmail={() => emailOutlook(contact.email)}
+                      onDelete={() => deleteContact(contact.id)}
+                    />
+                  ))
+              ) : (
+                <div className="col-span-full text-center py-10">
+                  <Building className="h-12 w-12 mx-auto text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium">No vendors found</h3>
+                  <p className="text-sm text-gray-500 mt-1">Add some vendors to see them here</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="prospects" className="mt-6">
+            {/* Similar structure for prospects */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredContacts.filter(c => c.type === "Prospect").length > 0 ? (
+                filteredContacts
+                  .filter(c => c.type === "Prospect")
+                  .map((contact) => (
+                    <ContactCard 
+                      key={contact.id}
+                      contact={contact}
+                      onToggleStar={() => toggleStarred(contact.id)}
+                      onCall={() => callWhatsApp(contact.phone)}
+                      onEmail={() => emailOutlook(contact.email)}
+                      onDelete={() => deleteContact(contact.id)}
+                    />
+                  ))
+              ) : (
+                <div className="col-span-full text-center py-10">
+                  <Building className="h-12 w-12 mx-auto text-gray-400" />
+                  <h3 className="mt-2 text-lg font-medium">No prospects found</h3>
+                  <p className="text-sm text-gray-500 mt-1">Add some prospects to see them here</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </Layout>
+  );
+};
+
+interface ContactCardProps {
+  contact: Contact;
+  onToggleStar: () => void;
+  onCall: () => void;
+  onEmail: () => void;
+  onDelete: () => void;
+}
+
+const ContactCard: React.FC<ContactCardProps> = ({
+  contact,
+  onToggleStar,
+  onCall,
+  onEmail,
+  onDelete
+}) => {
+  const getBadgeColor = (type: ContactType) => {
+    switch (type) {
+      case "Customer":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "Vendor":
+        return "bg-blue-100 text-blue-800 border-blue-300";
+      case "Prospect":
+        return "bg-orange-100 text-orange-800 border-orange-300";
+    }
+  };
+  
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div className="p-4 flex justify-between items-start">
+          <div className="flex items-start space-x-3">
+            <Avatar className="h-12 w-12">
+              {contact.avatar ? (
+                <AvatarImage src={contact.avatar} alt={contact.name} />
+              ) : (
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {contact.name.charAt(0)}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="font-medium">{contact.name}</h3>
+                <button
+                  onClick={onToggleStar}
+                  className="focus:outline-none"
+                >
+                  <Star className={`h-4 w-4 ${contact.starred ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`} />
+                </button>
+              </div>
+              <Badge variant="outline" className={`mt-1 text-xs ${getBadgeColor(contact.type)}`}>
+                {contact.type}
+              </Badge>
+            </div>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                </svg>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={onToggleStar}>
+                {contact.starred ? "Remove Star" : "Add Star"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Edit className="h-4 w-4 mr-2" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDelete} className="text-red-600">
+                <Trash className="h-4 w-4 mr-2" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        
+        <Separator />
+        
+        <div className="p-4 space-y-2">
+          {contact.position && contact.company && (
+            <div className="flex items-start">
+              <Building className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+              <div>
+                <div className="text-sm">{contact.position}</div>
+                <div className="text-sm font-medium">{contact.company}</div>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex items-start">
+            <Phone className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+            <span className="text-sm">{contact.phone}</span>
+          </div>
+          
+          {contact.email && (
+            <div className="flex items-start">
+              <Mail className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+              <span className="text-sm truncate max-w-[200px]">{contact.email}</span>
+            </div>
+          )}
+          
+          {contact.address && (
+            <div className="flex items-start">
+              <MapPin className="h-4 w-4 mt-0.5 mr-2 text-gray-500" />
+              <span className="text-sm">{contact.address}</span>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Contact Details Dialog */}
-      {selectedContact && (
-        <Dialog
-          open={!!selectedContact}
-          onOpenChange={(open) => !open && setSelectedContact(null)}
-        >
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-lg mr-2">
-                  {selectedContact.avatar}
-                </div>
-                {selectedContact.name}
-                {selectedContact.starred && (
-                  <StarIcon className="ml-2 h-4 w-4 fill-yellow-400 text-yellow-400" />
-                )}
-              </DialogTitle>
-              <DialogDescription>
-                {selectedContact.position} at {selectedContact.company}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-sm">Phone</Label>
-                  <div className="font-medium flex items-center">
-                    {selectedContact.phone}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 ml-1"
-                      onClick={() => handleCallViaWhatsApp(selectedContact.phone)}
-                    >
-                      <Phone className="h-4 w-4 text-green-600" />
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-sm">Email</Label>
-                  <div className="font-medium flex items-center">
-                    {selectedContact.email}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 ml-1"
-                      onClick={() => handleEmailViaOutlook(selectedContact.email)}
-                    >
-                      <Mail className="h-4 w-4 text-blue-600" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground text-sm">Company</Label>
-                <div className="font-medium">{selectedContact.company}</div>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground text-sm">Address</Label>
-                <div className="font-medium">{selectedContact.address}</div>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground text-sm">
-                  Contact Type
-                </Label>
-                <div>
-                  <Badge variant="outline">{selectedContact.type}</Badge>
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-muted-foreground text-sm">Tags</Label>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {selectedContact.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setSelectedContact(null)}
-              >
-                Close
-              </Button>
-              <Button>Edit Contact</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-    </Layout>
+        
+        <div className="p-4 pt-0 flex space-x-2">
+          <Button variant="secondary" size="sm" className="flex-1" onClick={onCall}>
+            <Phone className="h-3 w-3 mr-1" /> WhatsApp
+          </Button>
+          <Button variant="secondary" size="sm" className="flex-1" onClick={onEmail}>
+            <Mail className="h-3 w-3 mr-1" /> Email
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 
