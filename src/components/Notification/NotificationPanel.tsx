@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Bell, CheckCircle, Clock, X } from "lucide-react";
 import {
@@ -11,81 +10,148 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
-
-// Mock notification data - in a real app this would come from an API
-const notificationsData = [
-  {
-    id: 1,
-    title: "New Task Created",
-    description: "You created a new task: Update financial report",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-    read: false,
-    type: "task",
-  },
-  {
-    id: 2,
-    title: "Task Status Updated",
-    description: "Task 'Client presentation' moved to 'In Progress'",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    read: false,
-    type: "task",
-  },
-  {
-    id: 3,
-    title: "Payment Received",
-    description: "You received a payment of $1,500 from Acme Inc.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-    read: true,
-    type: "invoice",
-  },
-  {
-    id: 4,
-    title: "System Update",
-    description: "System will be down for maintenance on Sunday, 10PM EST",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    read: true,
-    type: "system",
-  },
-  {
-    id: 5,
-    title: "New Message",
-    description: "John Doe sent you a message",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 26), // 26 hours ago
-    read: false,
-    type: "message",
-  },
-];
+import { notificationService, Notification } from "@/services/notificationService";
+import { toast } from "@/hooks/use-toast";
 
 const NotificationPanel = () => {
-  const [notifications, setNotifications] = useState(notificationsData);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAsRead = (id: number) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
+  useEffect(() => {
+    fetchNotifications();
+    let unsubscribe: (() => void) | undefined;
+
+    const setupSubscription = async () => {
+      unsubscribe = await notificationService.subscribeToNotifications((notification) => {
+        setNotifications(prev => [notification, ...prev]);
+        // Show a toast for new notifications
+        toast({
+          title: notification.title,
+          description: notification.description,
+        });
+      });
+    };
+
+    setupSubscription();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      setIsLoading(true);
+      const data = await notificationService.getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch notifications",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markAsRead = async (id: number) => {
+    try {
+      const updatedNotification = await notificationService.markAsRead(id);
+      if (updatedNotification) {
+        setNotifications(notifications.map(n => 
+          n.id === id ? updatedNotification : n
+        ));
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark notification as read",
+        variant: "destructive",
+      });
+    }
   };
 
-  const deleteNotification = (id: number) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+  const markAllAsRead = async () => {
+    try {
+      const success = await notificationService.markAllAsRead();
+      if (success) {
+        setNotifications(notifications.map(n => ({ ...n, read: true })));
+      }
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      toast({
+        title: "Error",
+        description: "Failed to mark all notifications as read",
+        variant: "destructive",
+      });
+    }
   };
 
-  const clearAll = () => {
-    setNotifications([]);
+  const deleteNotification = async (id: number) => {
+    try {
+      const success = await notificationService.deleteNotification(id);
+      if (success) {
+        setNotifications(notifications.filter(n => n.id !== id));
+      }
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete notification",
+        variant: "destructive",
+      });
+    }
   };
 
-  const formatTimeAgo = (date: Date) => {
+  const clearAll = async () => {
+    try {
+      const success = await notificationService.clearAll();
+      if (success) {
+        setNotifications([]);
+      }
+    } catch (error) {
+      console.error('Error clearing notifications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear notifications",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const cleanupOldNotifications = async () => {
+    try {
+      await notificationService.cleanupOldNotifications();
+      await fetchNotifications(); // Refresh the notifications list
+      toast({
+        title: "Cleanup Complete",
+        description: "Old notifications have been cleaned up",
+      });
+    } catch (error) {
+      console.error('Error cleaning up old notifications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clean up old notifications",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const formatTimeAgo = (date: string) => {
+    const notificationDate = new Date(date);
     const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    const diffInSeconds = Math.floor((now.getTime() - notificationDate.getTime()) / 1000);
 
     if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    return format(date, 'MMM d, yyyy');
+    return format(notificationDate, 'MMM d, yyyy');
   };
 
   const getNotificationIcon = (type: string) => {
@@ -123,9 +189,14 @@ const NotificationPanel = () => {
               </Button>
             )}
             {notifications.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearAll}>
-                Clear all
-              </Button>
+              <>
+                <Button variant="ghost" size="sm" onClick={cleanupOldNotifications}>
+                  Clean up old
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearAll}>
+                  Clear all
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -138,7 +209,11 @@ const NotificationPanel = () => {
           
           <TabsContent value="all" className="p-0">
             <ScrollArea className="h-[300px]">
-              {notifications.length === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  Loading notifications...
+                </div>
+              ) : notifications.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   No notifications
                 </div>
@@ -159,7 +234,7 @@ const NotificationPanel = () => {
                           </h4>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {formatTimeAgo(notification.timestamp)}
+                              {formatTimeAgo(notification.created)}
                             </span>
                             <Button 
                               variant="ghost" 
@@ -193,7 +268,11 @@ const NotificationPanel = () => {
           
           <TabsContent value="unread" className="p-0">
             <ScrollArea className="h-[300px]">
-              {unreadCount === 0 ? (
+              {isLoading ? (
+                <div className="text-center py-6 text-muted-foreground">
+                  Loading notifications...
+                </div>
+              ) : unreadCount === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   No unread notifications
                 </div>
@@ -214,7 +293,7 @@ const NotificationPanel = () => {
                           </h4>
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground whitespace-nowrap">
-                              {formatTimeAgo(notification.timestamp)}
+                              {formatTimeAgo(notification.created)}
                             </span>
                             <Button 
                               variant="ghost" 

@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, RefreshCw, Edit, Copy, Trash, FilePlus, Search, Filter, Download, AlertCircle, Loader2 } from "lucide-react";
+import { PlusCircle, RefreshCw, Edit, Copy, Trash, FilePlus, Search, Filter, Download, AlertCircle, Loader2, ShoppingCart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem } from "@/services/inventoryService";
 import { Layout } from "@/components/Layout/Layout";
@@ -65,6 +64,8 @@ export default function Inventory() {
   const [categoryFilter, setCategoryFilter] = useState<string>("");
   const [locationFilter, setLocationFilter] = useState<string>("");
   const [stockFilter, setStockFilter] = useState<string>("");
+  const [selectedItems, setSelectedItems] = useState<InventoryItem[]>([]);
+  const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
 
   // Form state for new inventory item
   const [formData, setFormData] = useState({
@@ -177,6 +178,39 @@ export default function Inventory() {
     }
   };
 
+  const handleAddToInvoice = (item: InventoryItem) => {
+    setSelectedItems(prev => {
+      if (prev.find(i => i.id === item.id)) {
+        return prev;
+      }
+      return [...prev, item];
+    });
+    toast({
+      title: "Item added",
+      description: `${item.name} has been added to the invoice`,
+    });
+  };
+
+  const handleRemoveFromInvoice = (itemId: number) => {
+    setSelectedItems(prev => prev.filter(item => item.id !== itemId));
+    toast({
+      title: "Item removed",
+      description: "Item has been removed from the invoice",
+    });
+  };
+
+  const handleCreateInvoice = () => {
+    if (selectedItems.length === 0) {
+      toast({
+        title: "No items selected",
+        description: "Please select at least one item to create an invoice",
+        variant: "destructive",
+      });
+      return;
+    }
+    navigate(`/create-invoice?items=${encodeURIComponent(JSON.stringify(selectedItems))}`);
+  };
+
   // Filter items based on search term and other filters
   const filteredItems = items?.filter(
     (item) => {
@@ -209,9 +243,16 @@ export default function Inventory() {
         title="Inventory Management" 
         description="Track and manage your inventory items"
       >
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Item
-        </Button>
+        <div className="flex gap-2">
+          {selectedItems.length > 0 && (
+            <Button onClick={handleCreateInvoice}>
+              <ShoppingCart className="mr-2 h-4 w-4" /> Create Invoice ({selectedItems.length})
+            </Button>
+          )}
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+          </Button>
+        </div>
       </Header>
 
       <div className="container mx-auto py-4 space-y-6">
@@ -433,6 +474,14 @@ export default function Inventory() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex justify-end items-center space-x-2">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      onClick={() => handleAddToInvoice(item)}
+                                      className={selectedItems.find(i => i.id === item.id) ? "bg-primary text-primary-foreground" : ""}
+                                    >
+                                      <ShoppingCart className="h-4 w-4" />
+                                    </Button>
                                     <Button variant="ghost" size="icon">
                                       <Edit className="h-4 w-4" />
                                     </Button>
@@ -457,7 +506,7 @@ export default function Inventory() {
                                         <DropdownMenuItem>
                                           <Copy className="h-4 w-4 mr-2" /> Copy ID
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleCreateInvoice(item)}>
                                           <FilePlus className="h-4 w-4 mr-2" /> Create Invoice
                                         </DropdownMenuItem>
                                       </DropdownMenuContent>
@@ -504,8 +553,8 @@ export default function Inventory() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <DropdownMenuItem>
-                                      <Edit className="h-4 w-4 mr-2" /> Edit
+                                    <DropdownMenuItem onClick={() => handleCreateInvoice(item)}>
+                                      <FilePlus className="h-4 w-4 mr-2" /> Create Invoice
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => handleDelete(item.id)}>
                                       <Trash className="h-4 w-4 mr-2" /> Delete

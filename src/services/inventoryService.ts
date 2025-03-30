@@ -1,20 +1,24 @@
-
 import { supabase } from '@/lib/supabase';
 
 export interface InventoryItem {
   id: number;
   name: string;
-  description?: string;
-  category: string;
+  description: string | null;
+  category: string | null;
   stock: number;
   value: number;
-  location: string;
-  supplier?: string;
-  unit_of_measure?: string;
-  hsn_code?: string;
-  batch_number?: string;
+  location: string | null;
+  supplier: string | null;
+  unit_of_measure: string;
+  hsn_code: string | null;
+  batch_number: string | null;
+  reorder_level: number;
+  reorder_quantity: number;
+  stock_valuation_method: string;
+  cgst_rate: number;
+  sgst_rate: number;
   created_at: string;
-  last_updated: string;
+  updated_at: string;
 }
 
 // Get all inventory items

@@ -1,20 +1,53 @@
-
 import { supabase } from '@/lib/supabase';
 import { InventoryItem } from './inventoryService';
+
+// Generate a unique invoice number
+function generateInvoiceNumber(): string {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `INV-${year}${month}-${random}`;
+}
 
 export interface Invoice {
   id: string;
   invoice_number: string;
+  // Seller Information
+  seller_name: string;
+  seller_address: string;
+  seller_gstin: string;
+  seller_state: string;
+  seller_state_code: string;
+  seller_pan: string;
+  seller_phone: string;
+  seller_email: string;
+  // Buyer Information
   customer_name: string;
   customer_email: string | null;
   customer_address: string | null;
+  customer_gstin: string | null;
+  customer_state: string | null;
+  customer_state_code: string | null;
+  customer_phone: string | null;
+  // Invoice Details
   invoice_date: string;
-  due_date: string;
-  status: 'draft' | 'sent' | 'paid' | 'cancelled' | 'overdue';
+  delivery_note: string | null;
+  reference_date: string | null;
+  reference_number: string | null;
+  buyers_order_number: string | null;
+  buyers_order_date: string | null;
+  dispatch_doc_number: string | null;
+  dispatch_doc_date: string | null;
+  dispatched_through: string | null;
+  destination: string | null;
+  mode_of_payment: string | null;
+  terms_of_delivery: string | null;
+  other_references: string | null;
+  // Totals
   subtotal: number;
-  tax_total: number;
-  discount_percent: number | null;
-  discount_amount: number | null;
+  cgst_total: number;
+  sgst_total: number;
   total_amount: number;
   notes: string | null;
   terms_conditions: string | null;
@@ -28,44 +61,22 @@ export interface InvoiceItem {
   invoice_id: string;
   item_id: number | null;
   description: string;
+  description_of_goods: string;
+  category: string;
+  hsn_code: string;
   quantity: number;
+  rate: number;
   unit_price: number;
-  tax_rate: number | null;
-  tax_amount: number | null;
-  discount_percent: number | null;
-  discount_amount: number | null;
+  unit_of_measure: string;
+  available_stock: number;
+  current_stock: number;
+  cgst_rate: number;
+  sgst_rate: number;
+  cgst_amount: number;
+  sgst_amount: number;
   total_amount: number;
   created_at: string;
   item?: InventoryItem;
-}
-
-// Create a new invoice
-export async function createInvoice(invoice: Omit<Invoice, 'id' | 'invoice_number' | 'created_at' | 'updated_at'>) {
-  const { data, error } = await supabase
-    .from('invoices')
-    .insert([invoice])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating invoice:', error);
-    throw error;
-  }
-  return data;
-}
-
-// Add invoice items
-export async function addInvoiceItems(items: Omit<InvoiceItem, 'id' | 'created_at'>[]) {
-  const { data, error } = await supabase
-    .from('invoice_items')
-    .insert(items)
-    .select();
-
-  if (error) {
-    console.error('Error adding invoice items:', error);
-    throw error;
-  }
-  return data;
 }
 
 // Get all invoices
@@ -75,96 +86,148 @@ export async function getInvoices() {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching invoices:', error);
-    throw error;
-  }
+  if (error) throw error;
   return data;
 }
 
-// Get a single invoice with its items
+// Get a single invoice by ID
 export async function getInvoice(id: string) {
-  // Get invoice
-  const { data: invoice, error: invoiceError } = await supabase
+  const { data, error } = await supabase
     .from('invoices')
-    .select('*')
+    .select(`
+      *,
+      items:invoice_items(*)
+    `)
     .eq('id', id)
     .single();
 
-  if (invoiceError) {
-    console.error('Error fetching invoice:', invoiceError);
-    throw invoiceError;
-  }
-
-  // Get invoice items with inventory details
-  const { data: items, error: itemsError } = await supabase
-    .from('invoice_items')
-    .select(`
-      *,
-      inventory:item_id (*)
-    `)
-    .eq('invoice_id', id);
-
-  if (itemsError) {
-    console.error('Error fetching invoice items:', itemsError);
-    throw itemsError;
-  }
-
-  return { ...invoice, items };
+  if (error) throw error;
+  return data;
 }
 
-// Update invoice
-export async function updateInvoice(id: string, updates: Partial<Invoice>) {
+// Create a new invoice
+export async function createInvoice(invoice: Omit<Invoice, "id" | "created_at" | "updated_at">) {
+  const { data, error } = await supabase
+    .from("invoices")
+    .insert([
+      {
+        ...invoice,
+        invoice_number: generateInvoiceNumber(),
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Add invoice items
+export async function addInvoiceItems(items: Omit<InvoiceItem, "id" | "created_at">[]) {
+  const { data, error } = await supabase
+    .from("invoice_items")
+    .insert(items.map(item => ({
+      ...item,
+      description_of_goods: item.description_of_goods || "",
+      category: item.category || "",
+      unit_of_measure: item.unit_of_measure || "PCS",
+      available_stock: item.available_stock || 0,
+      current_stock: item.current_stock || 0,
+    })))
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Update an invoice
+export async function updateInvoice(id: string, invoice: Partial<Invoice>) {
   const { data, error } = await supabase
     .from('invoices')
-    .update(updates)
+    .update(invoice)
     .eq('id', id)
     .select()
     .single();
 
-  if (error) {
-    console.error('Error updating invoice:', error);
-    throw error;
-  }
+  if (error) throw error;
   return data;
 }
 
-// Delete invoice
+// Delete an invoice
 export async function deleteInvoice(id: string) {
   const { error } = await supabase
     .from('invoices')
     .delete()
     .eq('id', id);
 
-  if (error) {
-    console.error('Error deleting invoice:', error);
-    throw error;
-  }
+  if (error) throw error;
+}
+
+// Get invoice items for an invoice
+export async function getInvoiceItems(invoiceId: string) {
+  const { data, error } = await supabase
+    .from('invoice_items')
+    .select(`
+      *,
+      item:inventory_items(*)
+    `)
+    .eq('invoice_id', invoiceId);
+
+  if (error) throw error;
+  return data;
+}
+
+// Update an invoice item
+export async function updateInvoiceItem(id: string, item: Partial<InvoiceItem>) {
+  const { data, error } = await supabase
+    .from('invoice_items')
+    .update(item)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// Delete an invoice item
+export async function deleteInvoiceItem(id: string) {
+  const { error } = await supabase
+    .from('invoice_items')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
 }
 
 // Calculate invoice totals
 export function calculateInvoiceTotals(items: Omit<InvoiceItem, 'id' | 'invoice_id' | 'created_at'>[]) {
   let subtotal = 0;
-  let taxTotal = 0;
+  let cgstTotal = 0;
+  let sgstTotal = 0;
 
   items.forEach(item => {
     // Calculate line total
-    const lineTotal = item.quantity * item.unit_price;
+    const lineTotal = item.quantity * item.rate;
     
-    // Calculate tax if applicable
-    const taxAmount = item.tax_rate ? (lineTotal * (item.tax_rate / 100)) : 0;
+    // Calculate CGST and SGST at 9% each
+    const cgstAmount = lineTotal * 0.09; // 9% CGST
+    const sgstAmount = lineTotal * 0.09; // 9% SGST
     
-    // Calculate discount if applicable
-    const discountAmount = item.discount_percent 
-      ? (lineTotal * (item.discount_percent / 100))
-      : (item.discount_amount || 0);
-    
-    // Add to subtotal
+    // Add to totals
     subtotal += lineTotal;
-    
-    // Add to tax total
-    taxTotal += taxAmount;
+    cgstTotal += cgstAmount;
+    sgstTotal += sgstAmount;
   });
 
-  return { subtotal, taxTotal };
+  // Calculate total amount including GST (subtotal + CGST + SGST)
+  const totalAmount = subtotal + cgstTotal + sgstTotal;
+
+  return { 
+    subtotal, 
+    cgstTotal, 
+    sgstTotal,
+    totalAmount 
+  };
 }

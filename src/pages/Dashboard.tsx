@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
 import { Button } from "@/components/ui/button";
@@ -26,10 +25,17 @@ import {
   ClipboardList,
   Clock,
   Plus,
-  ArrowRight
+  ArrowRight,
+  File,
+  FileText,
+  FileImage,
+  FileSpreadsheet,
+  Presentation
 } from "lucide-react";
 import TaskManager from "@/components/Task/TaskManager";
 import { Link } from "react-router-dom";
+import { eventService, Event } from "@/services/eventService";
+import { documentService, Document } from "@/services/documentService";
 
 const data = [
   { name: "Jan", revenue: 4000, expenses: 2400 },
@@ -113,6 +119,43 @@ const previousWeekUsers = activeUsersData[activeUsersData.length - 2].count;
 const userGrowth = ((lastWeekUsers - previousWeekUsers) / previousWeekUsers) * 100;
 
 const Dashboard = () => {
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [recentDocuments, setRecentDocuments] = useState<Document[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
+
+  useEffect(() => {
+    const fetchUpcomingEvents = async () => {
+      try {
+        const events = await eventService.getUpcomingEvents();
+        setUpcomingEvents(events);
+      } catch (error) {
+        console.error('Error fetching upcoming events:', error);
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    };
+
+    const fetchRecentDocuments = async () => {
+      try {
+        const documents = await documentService.getRecentDocuments(5);
+        setRecentDocuments(documents);
+      } catch (error) {
+        console.error('Error fetching recent documents:', error);
+      } finally {
+        setIsLoadingDocuments(false);
+      }
+    };
+
+    fetchUpcomingEvents();
+    fetchRecentDocuments();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
   return (
     <Layout>
       <Header 
@@ -196,6 +239,44 @@ const Dashboard = () => {
             </p>
           </CardContent>
         </Card>
+        <Card className="scale-enter" style={{ animationDelay: "0.1s" }}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Recent Documents</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoadingDocuments ? (
+              <div className="text-sm text-muted-foreground">Loading documents...</div>
+            ) : recentDocuments.length > 0 ? (
+              <div className="space-y-2">
+                {recentDocuments.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1 rounded-md bg-muted">
+                        <doc.icon className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium truncate max-w-[150px]" title={doc.name}>
+                          {doc.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Modified {formatDate(doc.modified)}
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link to="/documents">
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">No recent documents</div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs defaultValue="overview" className="mt-6">
@@ -254,21 +335,36 @@ const Dashboard = () => {
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-sm">Strategy Meeting</div>
-                <p className="text-xs text-muted-foreground">Today, 2:00 PM</p>
+                {isLoadingEvents ? (
+                  <div className="text-sm text-muted-foreground">Loading events...</div>
+                ) : upcomingEvents.length > 0 ? (
+                  <div className="space-y-2">
+                    {upcomingEvents.map((event) => (
+                      <div key={event.id} className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium">{event.title}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(event.start_time).toLocaleTimeString('en-US', { 
+                              hour: 'numeric', 
+                              minute: '2-digit', 
+                              hour12: true 
+                            })}
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to="/calendar">
+                            <ArrowRight className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">No upcoming events</div>
+                )}
               </CardContent>
             </Card>
             <Card className="scale-enter" style={{ animationDelay: "0.1s" }}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Recent Documents</CardTitle>
-                <ClipboardList className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm">Q2 Sales Report.pdf</div>
-                <p className="text-xs text-muted-foreground">Modified 2 days ago</p>
-              </CardContent>
-            </Card>
-            <Card className="scale-enter" style={{ animationDelay: "0.2s" }}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Project Status</CardTitle>
                 <Clock className="h-4 w-4 text-muted-foreground" />

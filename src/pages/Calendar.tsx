@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
 import { Button } from "@/components/ui/button";
@@ -44,145 +44,8 @@ import {
   DialogTrigger
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-
-interface Event {
-  id: number;
-  title: string;
-  start: Date;
-  end: Date;
-  location?: string;
-  description?: string;
-  attendees?: string[];
-  tags?: string[];
-}
-
-interface EventDetailsDialogProps {
-  event: Event;
-  onClose: () => void;
-}
-
-const eventsData: Event[] = [
-  {
-    id: 1,
-    title: "Team Meeting",
-    start: new Date("2023-08-15T10:00:00"),
-    end: new Date("2023-08-15T11:00:00"),
-    location: "Conference Room A",
-    description: "Discuss project progress and next steps.",
-    attendees: ["John Doe", "Jane Smith", "Alice Johnson"],
-    tags: ["team", "meeting"]
-  },
-  {
-    id: 2,
-    title: "Client Presentation",
-    start: new Date("2023-08-16T14:00:00"),
-    end: new Date("2023-08-16T15:30:00"),
-    location: "Online",
-    description: "Present the new product features to the client.",
-    attendees: ["John Doe", "Client Contact"],
-    tags: ["sales", "presentation"]
-  },
-  {
-    id: 3,
-    title: "Workshop: React Best Practices",
-    start: new Date("2023-08-18T09:00:00"),
-    end: new Date("2023-08-18T17:00:00"),
-    location: "Training Center",
-    description: "Hands-on workshop on React best practices.",
-    attendees: ["All Developers"],
-    tags: ["training", "react"]
-  },
-  {
-    id: 4,
-    title: "Product Demo",
-    start: new Date("2023-08-20T11:00:00"),
-    end: new Date("2023-08-20T12:00:00"),
-    location: "Showroom",
-    description: "Demonstrate the latest product features.",
-    attendees: ["Sales Team", "Marketing Team"],
-    tags: ["product", "demo"]
-  },
-  {
-    id: 5,
-    title: "One-on-One Meeting",
-    start: new Date("2023-08-21T15:00:00"),
-    end: new Date("2023-08-21T16:00:00"),
-    location: "Manager's Office",
-    description: "Discuss performance and career goals.",
-    attendees: ["Employee", "Manager"],
-    tags: ["one-on-one", "meeting"]
-  },
-  {
-    id: 6,
-    title: "Team Lunch",
-    start: new Date("2023-08-22T12:00:00"),
-    end: new Date("2023-08-22T13:00:00"),
-    location: "Local Restaurant",
-    description: "Casual lunch with the team.",
-    attendees: ["All Team Members"],
-    tags: ["team", "social"]
-  },
-  {
-    id: 7,
-    title: "Code Review Session",
-    start: new Date("2023-08-23T16:00:00"),
-    end: new Date("2023-08-23T17:00:00"),
-    location: "Developer's Corner",
-    description: "Review the latest code changes and provide feedback.",
-    attendees: ["Developers"],
-    tags: ["code review", "development"]
-  },
-  {
-    id: 8,
-    title: "Project Planning Meeting",
-    start: new Date("2023-08-24T10:00:00"),
-    end: new Date("2023-08-24T11:30:00"),
-    location: "Project Room",
-    description: "Plan the next phase of the project.",
-    attendees: ["Project Team"],
-    tags: ["project", "planning"]
-  },
-  {
-    id: 9,
-    title: "Training Session: New Hires",
-    start: new Date("2023-08-25T14:00:00"),
-    end: new Date("2023-08-25T16:00:00"),
-    location: "Training Room B",
-    description: "Onboarding session for new employees.",
-    attendees: ["New Hires"],
-    tags: ["training", "onboarding"]
-  },
-  {
-    id: 10,
-    title: "End of Month Review",
-    start: new Date("2023-08-28T15:00:00"),
-    end: new Date("2023-08-28T16:00:00"),
-    location: "Board Room",
-    description: "Review the achievements and challenges of the month.",
-    attendees: ["Management Team"],
-    tags: ["review", "management"]
-  },
-  {
-    id: 11,
-    title: "Client Meeting",
-    start: new Date("2023-09-01T11:00:00"),
-    end: new Date("2023-09-01T12:00:00"),
-    location: "Client's Office",
-    description: "Discuss project requirements and timeline.",
-    attendees: ["Project Team", "Client Representatives"],
-    tags: ["client", "meeting"]
-  },
-  {
-    id: 12,
-    title: "Product Launch",
-    start: new Date("2023-09-05T18:00:00"),
-    end: new Date("2023-09-05T20:00:00"),
-    location: "Auditorium",
-    description: "Launch the new product to the public.",
-    attendees: ["All Employees", "Media", "Customers"],
-    tags: ["product", "launch"]
-  }
-];
+import { eventService, Event } from "@/services/eventService";
+import { documentService } from "@/services/documentService";
 
 const formatDate = (date: Date): string => {
   const day = String(date.getDate()).padStart(2, '0');
@@ -191,7 +54,7 @@ const formatDate = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-const formatEventDate = (start: Date, end: Date): string => {
+const formatEventDate = (start: string, end: string): string => {
   const startDate = new Date(start);
   const endDate = new Date(end);
 
@@ -207,7 +70,7 @@ const formatEventDate = (start: Date, end: Date): string => {
   }
 };
 
-const formatEventTime = (start: Date, end: Date): string => {
+const formatEventTime = (start: string, end: string): string => {
   const startTime = new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   const endTime = new Date(end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   return `${startTime} - ${endTime}`;
@@ -220,7 +83,27 @@ const Calendar = () => {
   const [isCreateEventDialogOpen, setIsCreateEventDialogOpen] = useState(false);
   const [isEventDetailsDialogOpen, setIsEventDetailsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [events, setEvents] = useState<Event[]>(eventsData);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditEventDialogOpen, setIsEditEventDialogOpen] = useState(false);
+  const [eventToEdit, setEventToEdit] = useState<Event | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const fetchedEvents = await eventService.getEvents();
+        setEvents(fetchedEvents);
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
 
   const openCreateEventDialog = () => setIsCreateEventDialogOpen(true);
   const closeCreateEventDialog = () => setIsCreateEventDialogOpen(false);
@@ -284,6 +167,75 @@ const Calendar = () => {
     calendarDays.push(i);
   }
 
+  const handleCreateEvent = async (eventData: Omit<Event, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
+    try {
+      const newEvent = await eventService.createEvent(eventData);
+      setEvents(prevEvents => [...prevEvents, newEvent]);
+      closeCreateEventDialog();
+    } catch (error) {
+      console.error('Error creating event:', error);
+      alert('Failed to create event. Please try again.');
+    }
+  };
+
+  const handleUpdateEvent = async (id: string, eventData: Partial<Event>) => {
+    try {
+      const updatedEvent = await eventService.updateEvent(id, eventData);
+      setEvents(prevEvents => 
+        prevEvents.map(event => 
+          event.id === id ? updatedEvent : event
+        )
+      );
+    } catch (error) {
+      console.error('Error updating event:', error);
+      alert('Failed to update event. Please try again.');
+    }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    try {
+      await eventService.deleteEvent(id);
+      setEvents(prevEvents => prevEvents.filter(event => event.id !== id));
+      setIsEventDetailsDialogOpen(false);
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Failed to delete event. Please try again.');
+    }
+  };
+
+  const handleEditEvent = async (id: string, eventData: Partial<Event>) => {
+    try {
+      const updatedEvent = await eventService.updateEvent(id, eventData);
+      setEvents(prevEvents => 
+        prevEvents.map(event => 
+          event.id === id ? updatedEvent : event
+        )
+      );
+      setIsEditEventDialogOpen(false);
+      setEventToEdit(null);
+    } catch (error) {
+      console.error('Error updating event:', error);
+      alert('Failed to update event. Please try again.');
+    }
+  };
+
+  const handleDateClick = (date: Date) => {
+    const eventForDay = filteredEvents.find(event => 
+      new Date(event.start_time).toDateString() === date.toDateString()
+    );
+    
+    if (eventForDay) {
+      setSelectedEvent(eventForDay);
+      setIsEventDetailsDialogOpen(true);
+    } else {
+      // If no event exists, open create event dialog with pre-filled date
+      setStartDate(date.toISOString().slice(0, 16)); // Format: YYYY-MM-DDThh:mm
+      setEndDate(new Date(date.getTime() + 60 * 60 * 1000).toISOString().slice(0, 16)); // Add 1 hour
+      setIsCreateEventDialogOpen(true);
+    }
+  };
+
   return (
     <Layout>
       <Header
@@ -326,58 +278,63 @@ const Calendar = () => {
         </div>
       </div>
 
-      {selectedView === "month" && (
-        <div className="rounded-md border">
-          <div className="flex items-center justify-between p-4">
-            <Button variant="ghost" size="icon" onClick={goToPreviousMonth}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <h2 className="text-lg font-semibold">
-              {new Date(currentYear, currentMonth, 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
-            </h2>
-            <Button variant="ghost" size="icon" onClick={goToNextMonth}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-7">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
-              <div key={index} className="px-4 py-2 text-center font-medium">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7">
-            {calendarDays.map((day, index) => {
-              const date = day ? new Date(currentYear, currentMonth, day) : null;
-              const isToday = date ? date.toDateString() === new Date().toDateString() : false;
-              const hasEvent = date ? filteredEvents.some(event => formatDate(event.start) === formatDate(date)) : false;
-
-              return (
-                <div
-                  key={index}
-                  className={`px-4 py-2 text-center border-t ${day ? 'border-r' : ''} relative ${isToday ? 'font-semibold' : ''} ${day ? 'cursor-pointer hover:bg-accent' : 'bg-gray-100 text-gray-400'}`}
-                  onClick={() => {
-                    if (date) {
-                      const eventForDay = filteredEvents.find(event => formatDate(event.start) === formatDate(date));
-                      if (eventForDay) {
-                        openEventDetailsDialog(eventForDay);
-                      }
-                    }
-                  }}
-                >
-                  {day}
-                  {hasEvent && (
-                    <div className="absolute top-1 right-1">
-                      <Badge variant="secondary" className="text-[0.6rem]">Event</Badge>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+      {isLoading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         </div>
+      ) : (
+        selectedView === "month" && (
+          <div className="rounded-md border">
+            <div className="flex items-center justify-between p-4">
+              <Button variant="ghost" size="icon" onClick={goToPreviousMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <h2 className="text-lg font-semibold">
+                {new Date(currentYear, currentMonth, 1).toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </h2>
+              <Button variant="ghost" size="icon" onClick={goToNextMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-7">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
+                <div key={index} className="px-4 py-2 text-center font-medium">
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7">
+              {calendarDays.map((day, index) => {
+                const date = day ? new Date(currentYear, currentMonth, day) : null;
+                const isToday = date ? date.toDateString() === new Date().toDateString() : false;
+                const hasEvent = date ? filteredEvents.some(event => 
+                  new Date(event.start_time).toDateString() === date.toDateString()
+                ) : false;
+
+                return (
+                  <div
+                    key={index}
+                    className={`px-4 py-2 text-center border-t ${day ? 'border-r' : ''} relative ${isToday ? 'font-semibold' : ''} ${day ? 'cursor-pointer hover:bg-accent' : 'bg-gray-100 text-gray-400'}`}
+                    onClick={() => {
+                      if (date) {
+                        handleDateClick(date);
+                      }
+                    }}
+                  >
+                    {day}
+                    {hasEvent && (
+                      <div className="absolute top-1 right-1">
+                        <Badge variant="secondary" className="text-[0.6rem]">Event</Badge>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
       )}
 
       {selectedView === "agenda" && (
@@ -410,7 +367,7 @@ const Calendar = () => {
                   </DropdownMenu>
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {formatEventDate(event.start, event.end)} • {formatEventTime(event.start, event.end)}
+                  {formatEventDate(event.start_time, event.end_time)} • {formatEventTime(event.start_time, event.end_time)}
                 </div>
                 {event.location && (
                   <div className="flex items-center mt-2 text-sm">
@@ -436,9 +393,38 @@ const Calendar = () => {
         </div>
       )}
 
-      <CreateEventDialog isOpen={isCreateEventDialogOpen} onClose={closeCreateEventDialog} />
+      <CreateEventDialog 
+        isOpen={isCreateEventDialogOpen} 
+        onClose={closeCreateEventDialog}
+        onSubmit={handleCreateEvent}
+      />
+      
       {selectedEvent && (
-        <EventDetailsDialog event={selectedEvent} onClose={closeEventDetailsDialog} />
+        <EventDetailsDialog 
+          event={selectedEvent} 
+          onClose={() => {
+            setIsEventDetailsDialogOpen(false);
+            setSelectedEvent(null);
+          }}
+          onDelete={handleDeleteEvent}
+          onEdit={() => {
+            setEventToEdit(selectedEvent);
+            setIsEditEventDialogOpen(true);
+            setIsEventDetailsDialogOpen(false);
+          }}
+        />
+      )}
+
+      {eventToEdit && (
+        <EditEventDialog
+          event={eventToEdit}
+          isOpen={isEditEventDialogOpen}
+          onClose={() => {
+            setIsEditEventDialogOpen(false);
+            setEventToEdit(null);
+          }}
+          onSubmit={handleEditEvent}
+        />
       )}
     </Layout>
   );
@@ -447,41 +433,54 @@ const Calendar = () => {
 interface CreateEventDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (event: Omit<Event, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => Promise<void>;
 }
 
-const CreateEventDialog: React.FC<CreateEventDialogProps> = ({ isOpen, onClose }) => {
+const CreateEventDialog: React.FC<CreateEventDialogProps> = ({ isOpen, onClose, onSubmit }) => {
   const [title, setTitle] = useState("");
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [attendees, setAttendees] = useState("");
   const [tags, setTags] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleCreateEvent = () => {
-    // Basic validation
-    if (!title || !startDate || !endDate) {
-      alert("Please fill in all required fields.");
-      return;
+  const handleSubmit = async () => {
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      if (!title || !startDate || !endDate) {
+        throw new Error("Please fill in all required fields.");
+      }
+
+      const startDateTime = new Date(startDate);
+      const endDateTime = new Date(endDate);
+
+      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+        throw new Error("Invalid date format.");
+      }
+
+      if (endDateTime <= startDateTime) {
+        throw new Error("End time must be after start time.");
+      }
+
+      await onSubmit({
+        title,
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString(),
+        location,
+        description,
+        attendees: attendees ? attendees.split(",").map(s => s.trim()) : [],
+        tags: tags ? tags.split(",").map(s => s.trim()) : []
+      });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to create event. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Create a new event object
-    const newEvent: Event = {
-      id: Date.now(), // Generate a unique ID
-      title: title,
-      start: startDate,
-      end: endDate,
-      location: location,
-      description: description,
-      attendees: attendees.split(",").map(s => s.trim()),
-      tags: tags.split(",").map(s => s.trim())
-    };
-
-    // Add the new event to the events list (you'll need to manage this state)
-    // setEvents(prevEvents => [...prevEvents, newEvent]);
-
-    // Close the dialog
-    onClose();
   };
 
   return (
@@ -494,51 +493,45 @@ const CreateEventDialog: React.FC<CreateEventDialogProps> = ({ isOpen, onClose }
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
+          {error && (
+            <div className="text-sm text-red-500 bg-red-50 p-2 rounded-md">
+              {error}
+            </div>
+          )}
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="title" className="text-right text-sm font-medium leading-none text-right">
-              Title
+              Title *
             </label>
             <Input
               id="title"
               className="col-span-3"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter event title"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="startDate" className="text-right text-sm font-medium leading-none text-right">
-              Start Date
+              Start Date *
             </label>
-            {/* <DatePicker
-              id="startDate"
-              className="col-span-3"
-              selected={startDate}
-              onChange={(date: Date) => setStartDate(date)}
-              placeholderText="Select start date"
-            /> */}
             <Input
               type="datetime-local"
               id="startDate"
               className="col-span-3"
-              onChange={(e) => setStartDate(new Date(e.target.value))}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
             <label htmlFor="endDate" className="text-right text-sm font-medium leading-none text-right">
-              End Date
+              End Date *
             </label>
-            {/* <DatePicker
-              id="endDate"
-              className="col-span-3"
-              selected={endDate}
-              onChange={(date: Date) => setEndDate(date)}
-              placeholderText="Select end date"
-            /> */}
             <Input
               type="datetime-local"
               id="endDate"
               className="col-span-3"
-              onChange={(e) => setEndDate(new Date(e.target.value))}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -550,6 +543,7 @@ const CreateEventDialog: React.FC<CreateEventDialogProps> = ({ isOpen, onClose }
               className="col-span-3"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
+              placeholder="Enter event location"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -561,6 +555,7 @@ const CreateEventDialog: React.FC<CreateEventDialogProps> = ({ isOpen, onClose }
               className="col-span-3"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter event description"
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -592,68 +587,265 @@ const CreateEventDialog: React.FC<CreateEventDialogProps> = ({ isOpen, onClose }
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" onClick={handleCreateEvent}>Create Event</Button>
+          <Button 
+            type="submit" 
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Creating...' : 'Create Event'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
 
-const EventDetailsDialog = ({ event, onClose }: EventDetailsDialogProps) => {
+interface EventDetailsDialogProps {
+  event: Event;
+  onClose: () => void;
+  onDelete: (id: string) => Promise<void>;
+  onEdit: () => void;
+}
+
+const EventDetailsDialog: React.FC<EventDetailsDialogProps> = ({ 
+  event, 
+  onClose, 
+  onDelete,
+  onEdit
+}) => {
   return (
-    <DialogContent className="sm:max-w-[500px]">
-      <DialogHeader>
-        <DialogTitle className="text-xl">{event.title}</DialogTitle>
-        <DialogDescription>
-          <div className="mt-2 space-y-2">
-            <div className="flex items-center text-sm">
-              <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-              <span>{formatEventDate(event.start, event.end)}</span>
-            </div>
-            <div className="flex items-center text-sm">
-              <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-              <span>{formatEventTime(event.start, event.end)}</span>
-            </div>
-            {event.location && (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="text-xl">{event.title}</DialogTitle>
+          <DialogDescription>
+            <div className="mt-2 space-y-2">
               <div className="flex items-center text-sm">
-                <Map className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>{event.location}</span>
+                <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>{formatEventDate(event.start_time, event.end_time)}</span>
               </div>
-            )}
-            {event.attendees && (
               <div className="flex items-center text-sm">
-                <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>{event.attendees.join(", ")}</span>
+                <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>{formatEventTime(event.start_time, event.end_time)}</span>
               </div>
-            )}
+              {event.location && (
+                <div className="flex items-center text-sm">
+                  <Map className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span>{event.location}</span>
+                </div>
+              )}
+              {event.attendees && (
+                <div className="flex items-center text-sm">
+                  <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span>{event.attendees.join(", ")}</span>
+                </div>
+              )}
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        
+        {event.description && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium mb-1">Description</h4>
+            <p className="text-sm text-muted-foreground">{event.description}</p>
           </div>
-        </DialogDescription>
-      </DialogHeader>
-      
-      {event.description && (
-        <div className="mt-4">
-          <h4 className="text-sm font-medium mb-1">Description</h4>
-          <p className="text-sm text-muted-foreground">{event.description}</p>
-        </div>
-      )}
-      
-      <div className="mt-4 flex gap-2">
-        {event.tags && event.tags.map((tag, i) => (
-          <Badge key={i} variant="outline" className="bg-muted">{tag}</Badge>
-        ))}
-      </div>
-      
-      <DialogFooter className="mt-6">
-        <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
-        {event.location && (
-          <Button size="sm" variant="outline" className="gap-1">
-            <Map className="h-3.5 w-3.5" />
-            Open Map
-          </Button>
         )}
-        <Button size="sm">Edit Event</Button>
-      </DialogFooter>
-    </DialogContent>
+        
+        <div className="mt-4 flex gap-2">
+          {event.tags && event.tags.map((tag, i) => (
+            <Badge key={i} variant="outline" className="bg-muted">{tag}</Badge>
+          ))}
+        </div>
+        
+        <DialogFooter className="mt-6">
+          <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            onClick={() => onDelete(event.id)}
+          >
+            Delete
+          </Button>
+          <Button size="sm" onClick={onEdit}>Edit Event</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+interface EditEventDialogProps {
+  event: Event;
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (id: string, event: Partial<Event>) => Promise<void>;
+}
+
+const EditEventDialog: React.FC<EditEventDialogProps> = ({ 
+  event, 
+  isOpen, 
+  onClose, 
+  onSubmit 
+}) => {
+  const [title, setTitle] = useState(event.title);
+  const [startDate, setStartDate] = useState(event.start_time.slice(0, 16));
+  const [endDate, setEndDate] = useState(event.end_time.slice(0, 16));
+  const [location, setLocation] = useState(event.location || "");
+  const [description, setDescription] = useState(event.description || "");
+  const [attendees, setAttendees] = useState(event.attendees?.join(", ") || "");
+  const [tags, setTags] = useState(event.tags?.join(", ") || "");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      if (!title || !startDate || !endDate) {
+        throw new Error("Please fill in all required fields.");
+      }
+
+      const startDateTime = new Date(startDate);
+      const endDateTime = new Date(endDate);
+
+      if (isNaN(startDateTime.getTime()) || isNaN(endDateTime.getTime())) {
+        throw new Error("Invalid date format.");
+      }
+
+      if (endDateTime <= startDateTime) {
+        throw new Error("End time must be after start time.");
+      }
+
+      await onSubmit(event.id, {
+        title,
+        start_time: startDateTime.toISOString(),
+        end_time: endDateTime.toISOString(),
+        location,
+        description,
+        attendees: attendees ? attendees.split(",").map(s => s.trim()) : [],
+        tags: tags ? tags.split(",").map(s => s.trim()) : []
+      });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to update event. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[525px]">
+        <DialogHeader>
+          <DialogTitle>Edit Event</DialogTitle>
+          <DialogDescription>
+            Update your event details below.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          {error && (
+            <div className="text-sm text-red-500 bg-red-50 p-2 rounded-md">
+              {error}
+            </div>
+          )}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="title" className="text-right text-sm font-medium leading-none text-right">
+              Title *
+            </label>
+            <Input
+              id="title"
+              className="col-span-3"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter event title"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="startDate" className="text-right text-sm font-medium leading-none text-right">
+              Start Date *
+            </label>
+            <Input
+              type="datetime-local"
+              id="startDate"
+              className="col-span-3"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="endDate" className="text-right text-sm font-medium leading-none text-right">
+              End Date *
+            </label>
+            <Input
+              type="datetime-local"
+              id="endDate"
+              className="col-span-3"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="location" className="text-right text-sm font-medium leading-none text-right">
+              Location
+            </label>
+            <Input
+              id="location"
+              className="col-span-3"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Enter event location"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="description" className="text-right text-sm font-medium leading-none text-right">
+              Description
+            </label>
+            <Textarea
+              id="description"
+              className="col-span-3"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Enter event description"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="attendees" className="text-right text-sm font-medium leading-none text-right">
+              Attendees
+            </label>
+            <Input
+              id="attendees"
+              className="col-span-3"
+              placeholder="john.doe@example.com, jane.doe@example.com"
+              value={attendees}
+              onChange={(e) => setAttendees(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="tags" className="text-right text-sm font-medium leading-none text-right">
+              Tags
+            </label>
+            <Input
+              id="tags"
+              className="col-span-3"
+              placeholder="meeting, work, important"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

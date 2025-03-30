@@ -1,8 +1,10 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { documentService, Document } from "@/services/documentService";
+import { folderService, Folder as FolderType } from "@/services/folderService";
 import { 
   Search, 
   Plus,
@@ -39,121 +41,8 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-
-const documentData = [
-  {
-    id: 1,
-    name: "Q2 2023 Financial Report.xlsx",
-    type: "spreadsheet",
-    icon: FileSpreadsheet,
-    size: "2.4 MB",
-    created: "2023-06-15",
-    modified: "2023-07-01",
-    owner: "John Doe",
-    shared: true,
-    starred: true,
-    category: "finance",
-    folder: "Reports"
-  },
-  {
-    id: 2,
-    name: "Marketing Campaign Strategy.docx",
-    type: "document",
-    icon: FileText,
-    size: "1.8 MB",
-    created: "2023-06-10",
-    modified: "2023-06-28",
-    owner: "Jane Smith",
-    shared: true,
-    starred: false,
-    category: "marketing",
-    folder: "Marketing"
-  },
-  {
-    id: 3,
-    name: "Product Roadmap 2023.pptx",
-    type: "presentation",
-    icon: Presentation,
-    size: "4.5 MB",
-    created: "2023-05-22",
-    modified: "2023-06-15",
-    owner: "Robert Johnson",
-    shared: true,
-    starred: true,
-    category: "product",
-    folder: "Product Development"
-  },
-  {
-    id: 4,
-    name: "Company Logo.png",
-    type: "image",
-    icon: FileImage,
-    size: "0.8 MB",
-    created: "2023-03-10",
-    modified: "2023-03-10",
-    owner: "Emily Davis",
-    shared: false,
-    starred: false,
-    category: "design",
-    folder: "Brand Assets"
-  },
-  {
-    id: 5,
-    name: "Employee Handbook.pdf",
-    type: "pdf",
-    icon: File,
-    size: "3.2 MB",
-    created: "2023-01-15",
-    modified: "2023-05-20",
-    owner: "HR Department",
-    shared: true,
-    starred: false,
-    category: "hr",
-    folder: "HR Documents"
-  },
-  {
-    id: 6,
-    name: "Project Timeline.xlsx",
-    type: "spreadsheet",
-    icon: FileSpreadsheet,
-    size: "1.5 MB",
-    created: "2023-06-05",
-    modified: "2023-07-02",
-    owner: "Michael Wilson",
-    shared: true,
-    starred: false,
-    category: "project",
-    folder: "Project Management"
-  },
-  {
-    id: 7,
-    name: "Client Presentation.pptx",
-    type: "presentation",
-    icon: Presentation,
-    size: "5.7 MB",
-    created: "2023-06-18",
-    modified: "2023-06-25",
-    owner: "Sarah Brown",
-    shared: true,
-    starred: true,
-    category: "sales",
-    folder: "Sales"
-  },
-  {
-    id: 8,
-    name: "API Documentation.pdf",
-    type: "pdf",
-    icon: File,
-    size: "2.1 MB",
-    created: "2023-04-12",
-    modified: "2023-06-30",
-    owner: "Tech Team",
-    shared: false,
-    starred: false,
-    category: "technical",
-    folder: "Documentation"
-  }
-];
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const folderData = [
   { id: 1, name: "Reports", files: 12, color: "blue" },
@@ -168,13 +57,55 @@ const folderData = [
 
 const Documents = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [documents, setDocuments] = useState(documentData);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [view, setView] = useState("grid");
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [folders, setFolders] = useState<FolderType[]>([]);
+  const [isCreateFolderDialogOpen, setIsCreateFolderDialogOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderColor, setNewFolderColor] = useState("blue");
+  const [selectedFolder, setSelectedFolder] = useState<FolderType | null>(null);
   
+  useEffect(() => {
+    fetchDocuments();
+    fetchFolders();
+  }, []);
+
+  const fetchDocuments = async () => {
+    try {
+      setIsLoading(true);
+      const docs = await documentService.getRecentDocuments(100); // Fetch up to 100 documents
+      setDocuments(docs);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch documents",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchFolders = async () => {
+    try {
+      const folders = await folderService.getFolders();
+      setFolders(folders);
+    } catch (error) {
+      console.error('Error fetching folders:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch folders",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredDocuments = documents.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     doc.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -201,7 +132,39 @@ const Documents = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      if (file.size > 20 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Maximum file size is 20MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.size > 20 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Maximum file size is 20MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedFile(file);
     }
   };
 
@@ -215,7 +178,62 @@ const Documents = () => {
     }
   };
 
-  const handleUploadSubmit = () => {
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a folder name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const newFolder = await folderService.createFolder(newFolderName, newFolderColor);
+      if (newFolder) {
+        setFolders([...folders, newFolder]);
+        setIsCreateFolderDialogOpen(false);
+        setNewFolderName("");
+        toast({
+          title: "Success",
+          description: "Folder created successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Error creating folder:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create folder",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteFolder = async (id: number) => {
+    try {
+      const confirmed = window.confirm('Are you sure you want to delete this folder? All files in the folder will be deleted.');
+      if (!confirmed) return;
+
+      const success = await folderService.deleteFolder(id);
+      if (success) {
+        setFolders(folders.filter(folder => folder.id !== id));
+        setDocuments(documents.filter(doc => doc.folder_id !== id));
+        toast({
+          title: "Success",
+          description: "Folder deleted successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting folder:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete folder",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUploadSubmit = async () => {
     if (!selectedFile) {
       toast({
         title: "No file selected",
@@ -225,55 +243,68 @@ const Documents = () => {
       return;
     }
 
-    // Get the file type to determine the icon
-    const fileName = selectedFile.name;
-    const fileExtension = fileName.split('.').pop()?.toLowerCase() || '';
-    
-    let fileType = "document";
-    let fileIcon = FileText;
-    
-    if (['xlsx', 'xls', 'csv'].includes(fileExtension)) {
-      fileType = "spreadsheet";
-      fileIcon = FileSpreadsheet;
-    } else if (['pptx', 'ppt'].includes(fileExtension)) {
-      fileType = "presentation";
-      fileIcon = Presentation;
-    } else if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(fileExtension)) {
-      fileType = "image";
-      fileIcon = FileImage;
-    } else if (['pdf'].includes(fileExtension)) {
-      fileType = "pdf";
-      fileIcon = File;
+    try {
+      const loadingToast = toast({
+        title: "Uploading document",
+        description: "Please wait while we upload your file...",
+      });
+
+      const newDocument = await documentService.uploadDocument(selectedFile, selectedFolder?.id);
+      
+      if (newDocument) {
+        setDocuments([newDocument, ...documents]);
+        setIsUploadDialogOpen(false);
+        setSelectedFile(null);
+        setSelectedFolder(null);
+        
+        toast({
+          title: "File uploaded",
+          description: `${selectedFile.name} has been uploaded successfully`,
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : "Failed to upload file",
+        variant: "destructive",
+      });
     }
+  };
 
-    // Create a new document object
-    const newDocument = {
-      id: documents.length + 1,
-      name: fileName,
-      type: fileType,
-      icon: fileIcon,
-      size: `${(selectedFile.size / (1024 * 1024)).toFixed(1)} MB`,
-      created: new Date().toISOString().split('T')[0],
-      modified: new Date().toISOString().split('T')[0],
-      owner: "You",
-      shared: false,
-      starred: false,
-      category: "uploads",
-      folder: "Uploads"
-    };
+  const handleDeleteDocument = async (id: number) => {
+    try {
+      // Show confirmation dialog
+      const confirmed = window.confirm('Are you sure you want to delete this document?');
+      if (!confirmed) return;
 
-    // Add the new document to the documents array
-    setDocuments([newDocument, ...documents]);
+      // Show loading toast
+      const loadingToast = toast({
+        title: "Deleting document",
+        description: "Please wait while we delete your file...",
+      });
 
-    // Close the dialog and reset the selected file
-    setIsUploadDialogOpen(false);
-    setSelectedFile(null);
-    
-    // Show a success toast
-    toast({
-      title: "File uploaded",
-      description: `${fileName} has been uploaded successfully`,
-    });
+      // Delete the document
+      const success = await documentService.deleteDocument(id);
+      
+      if (success) {
+        // Remove the document from the documents array
+        setDocuments(docs => docs.filter(doc => doc.id !== id));
+        
+        // Update loading toast to success
+        toast({
+          title: "Document deleted",
+          description: "The document has been deleted successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Failed to delete document",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -369,7 +400,11 @@ const Documents = () => {
             ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4" 
             : "space-y-2"
           }>
-            {filteredDocuments.length > 0 ? (
+            {isLoading ? (
+              <div className="col-span-full text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              </div>
+            ) : filteredDocuments.length > 0 ? (
               filteredDocuments.map((doc) => (
                 view === "grid" ? (
                   <div key={doc.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
@@ -419,7 +454,10 @@ const Documents = () => {
                             Share
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleDeleteDocument(doc.id)}
+                          >
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -471,7 +509,10 @@ const Documents = () => {
                               Share
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteDocument(doc.id)}
+                            >
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -543,7 +584,10 @@ const Documents = () => {
                             Share
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={() => handleDeleteDocument(doc.id)}
+                          >
                             Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -592,7 +636,10 @@ const Documents = () => {
                               Share
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteDocument(doc.id)}
+                            >
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -614,22 +661,46 @@ const Documents = () => {
         
         <TabsContent value="folders" className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {folderData.map((folder) => (
-              <div key={folder.id} className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                <div className="flex items-center mb-3">
-                  <div className={`p-2 rounded-md bg-${folder.color}-100 mr-3`}>
-                    <Folder className={`h-6 w-6 text-${folder.color}-600`} />
+            {folders.map((folder) => (
+              <div 
+                key={folder.id} 
+                className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setSelectedFolder(folder)}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center">
+                    <div className={`p-2 rounded-md bg-${folder.color}-100 mr-3`}>
+                      <Folder className={`h-6 w-6 text-${folder.color}-600`} />
+                    </div>
+                    <h3 className="font-medium">{folder.name}</h3>
                   </div>
-                  <h3 className="font-medium">{folder.name}</h3>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={() => handleDeleteFolder(folder.id)}
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 
                 <div className="text-sm text-muted-foreground">
-                  {folder.files} {folder.files === 1 ? 'file' : 'files'}
+                  {documents.filter(doc => doc.folder_id === folder.id).length} files
                 </div>
               </div>
             ))}
             
-            <div className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow border-dashed flex flex-col items-center justify-center cursor-pointer h-[132px]">
+            <div 
+              className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow border-dashed flex flex-col items-center justify-center cursor-pointer h-[132px]"
+              onClick={() => setIsCreateFolderDialogOpen(true)}
+            >
               <FilePlus className="h-6 w-6 mb-2 text-muted-foreground" />
               <span className="text-sm font-medium">Create New Folder</span>
             </div>
@@ -756,6 +827,56 @@ const Documents = () => {
         </TabsContent>
       </Tabs>
 
+      {/* Create Folder Dialog */}
+      <Dialog open={isCreateFolderDialogOpen} onOpenChange={setIsCreateFolderDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Folder</DialogTitle>
+            <DialogDescription>
+              Create a new folder to organize your documents.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="folderName">Folder Name</Label>
+              <Input
+                id="folderName"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Enter folder name"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="folderColor">Color</Label>
+              <Select value={newFolderColor} onValueChange={setNewFolderColor}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a color" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="blue">Blue</SelectItem>
+                  <SelectItem value="green">Green</SelectItem>
+                  <SelectItem value="purple">Purple</SelectItem>
+                  <SelectItem value="yellow">Yellow</SelectItem>
+                  <SelectItem value="pink">Pink</SelectItem>
+                  <SelectItem value="teal">Teal</SelectItem>
+                  <SelectItem value="orange">Orange</SelectItem>
+                  <SelectItem value="indigo">Indigo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button onClick={handleCreateFolder}>Create Folder</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* File Upload Dialog */}
       <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
@@ -763,42 +884,74 @@ const Documents = () => {
             <DialogTitle>Upload Document</DialogTitle>
             <DialogDescription>
               Select a file from your computer to upload to your documents.
+              Maximum file size is 20MB.
             </DialogDescription>
           </DialogHeader>
           
           <div className="py-6">
-            <div 
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary cursor-pointer transition-colors"
-              onClick={handleBrowseClick}
-            >
-              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              
-              <div className="space-y-2">
-                <p className="text-sm font-medium">
-                  {selectedFile ? (
-                    <span className="text-primary">{selectedFile.name}</span>
-                  ) : (
-                    <span>Drag and drop or click to upload</span>
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Supports all file types up to 10MB
-                </p>
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="folder">Upload to Folder</Label>
+                <Select 
+                  value={selectedFolder?.id?.toString() || "root"} 
+                  onValueChange={(value) => {
+                    if (value === "root") {
+                      setSelectedFolder(null);
+                    } else {
+                      setSelectedFolder(folders.find(f => f.id === parseInt(value)) || null);
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a folder" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="root">Root</SelectItem>
+                    {folders.map(folder => (
+                      <SelectItem key={folder.id} value={folder.id.toString()}>
+                        {folder.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              
-              <input 
-                type="file" 
-                className="hidden" 
-                ref={fileInputRef} 
-                onChange={handleFileChange}
-              />
-              
-              {selectedFile && (
-                <div className="mt-4 text-xs text-muted-foreground">
-                  <p>Size: {(selectedFile.size / 1024).toFixed(1)} KB</p>
-                  <p>Type: {selectedFile.type || "Unknown"}</p>
+
+              <div 
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary cursor-pointer transition-colors"
+                onClick={handleBrowseClick}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
+                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    {selectedFile ? (
+                      <span className="text-primary">{selectedFile.name}</span>
+                    ) : (
+                      <span>Drag and drop or click to upload</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Supports all file types up to 20MB
+                  </p>
                 </div>
-              )}
+                
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange}
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.svg"
+                />
+                
+                {selectedFile && (
+                  <div className="mt-4 text-xs text-muted-foreground">
+                    <p>Size: {(selectedFile.size / (1024 * 1024)).toFixed(1)} MB</p>
+                    <p>Type: {selectedFile.type || "Unknown"}</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           

@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
 import { Input } from "@/components/ui/input";
@@ -49,101 +48,21 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { contactService, Contact } from "@/services/contactService";
 
 // Define the contact type
 type ContactType = "Customer" | "Vendor" | "Prospect";
-
-interface Contact {
-  id: number;
-  name: string;
-  avatar: string;
-  email: string;
-  phone: string;
-  company: string;
-  position: string;
-  address: string;
-  type: ContactType;
-  starred: boolean;
-  tags: string[];
-}
 
 const Contacts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<string | null>(null);
   const [onlyStarred, setOnlyStarred] = useState(false);
   const [isAddingContact, setIsAddingContact] = useState(false);
-  
-  // Sample contact data
-  const [contacts, setContacts] = useState<Contact[]>([
-    {
-      id: 1,
-      name: "John Smith",
-      avatar: "",
-      email: "john.smith@example.com",
-      phone: "+1 (555) 123-4567",
-      company: "Acme Inc.",
-      position: "Sales Manager",
-      address: "123 Business St, New York, NY 10001",
-      type: "Customer",
-      starred: true,
-      tags: ["VIP", "Enterprise"]
-    },
-    {
-      id: 2,
-      name: "Jane Doe",
-      avatar: "",
-      email: "jane.doe@example.com",
-      phone: "+1 (555) 987-6543",
-      company: "Global Tech",
-      position: "CTO",
-      address: "456 Tech Ave, San Francisco, CA 94107",
-      type: "Prospect",
-      starred: false,
-      tags: ["Technology", "Lead"]
-    },
-    {
-      id: 3,
-      name: "Robert Johnson",
-      avatar: "",
-      email: "robert.johnson@example.com",
-      phone: "+1 (555) 567-8901",
-      company: "Supply Solutions",
-      position: "Account Manager",
-      address: "789 Supply Rd, Chicago, IL 60601",
-      type: "Vendor",
-      starred: true,
-      tags: ["Office Supplies"]
-    },
-    {
-      id: 4,
-      name: "Emily Chen",
-      avatar: "",
-      email: "emily.chen@example.com",
-      phone: "+1 (555) 234-5678",
-      company: "Innovative Designs",
-      position: "Creative Director",
-      address: "321 Creative Blvd, Austin, TX 78701",
-      type: "Customer",
-      starred: false,
-      tags: ["Design", "Small Business"]
-    },
-    {
-      id: 5,
-      name: "Michael Rodriguez",
-      avatar: "",
-      email: "michael.rodriguez@example.com",
-      phone: "+1 (555) 345-6789",
-      company: "Rodriguez Consulting",
-      position: "CEO",
-      address: "654 Consulting Way, Miami, FL 33101",
-      type: "Prospect",
-      starred: true,
-      tags: ["Consulting", "VIP"]
-    }
-  ]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
   // New contact form state
-  const [newContact, setNewContact] = useState<Omit<Contact, "id">>({
+  const [newContact, setNewContact] = useState<Omit<Contact, 'id' | 'created' | 'modified' | 'user_id'>>({
     name: "",
     avatar: "",
     email: "",
@@ -155,6 +74,27 @@ const Contacts = () => {
     starred: false,
     tags: []
   });
+
+  useEffect(() => {
+    fetchContacts();
+  }, []);
+
+  const fetchContacts = async () => {
+    try {
+      setIsLoading(true);
+      const data = await contactService.getContacts();
+      setContacts(data);
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch contacts",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Filter contacts based on search and filter criteria
   const filteredContacts = contacts.filter(contact => {
@@ -171,7 +111,7 @@ const Contacts = () => {
   });
   
   // Handle adding a new contact
-  const handleAddContact = () => {
+  const handleAddContact = async () => {
     if (!newContact.name || !newContact.phone) {
       toast({
         title: "Required fields missing",
@@ -181,48 +121,62 @@ const Contacts = () => {
       return;
     }
     
-    setContacts([
-      ...contacts,
-      {
-        ...newContact,
-        id: contacts.length > 0 ? Math.max(...contacts.map(c => c.id)) + 1 : 1
+    try {
+      const contact = await contactService.createContact(newContact);
+      if (contact) {
+        setContacts([...contacts, contact]);
+        setIsAddingContact(false);
+        
+        // Reset form
+        setNewContact({
+          name: "",
+          avatar: "",
+          email: "",
+          phone: "",
+          company: "",
+          position: "",
+          address: "",
+          type: "Customer",
+          starred: false,
+          tags: []
+        });
+        
+        toast({
+          title: "Contact added",
+          description: `${newContact.name} has been added to your contacts`
+        });
       }
-    ]);
-    
-    setIsAddingContact(false);
-    
-    // Reset form
-    setNewContact({
-      name: "",
-      avatar: "",
-      email: "",
-      phone: "",
-      company: "",
-      position: "",
-      address: "",
-      type: "Customer",
-      starred: false,
-      tags: []
-    });
-    
-    toast({
-      title: "Contact added",
-      description: `${newContact.name} has been added to your contacts`
-    });
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add contact",
+        variant: "destructive"
+      });
+    }
   };
   
   // Handle toggling a contact's starred status
-  const toggleStarred = (contactId: number) => {
-    setContacts(contacts.map(contact => 
-      contact.id === contactId 
-        ? { ...contact, starred: !contact.starred } 
-        : contact
-    ));
+  const toggleStarred = async (contactId: number) => {
+    try {
+      const updatedContact = await contactService.toggleStarred(contactId);
+      if (updatedContact) {
+        setContacts(contacts.map(contact => 
+          contact.id === contactId ? updatedContact : contact
+        ));
+      }
+    } catch (error) {
+      console.error('Error toggling starred status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update contact",
+        variant: "destructive"
+      });
+    }
   };
   
   // Handle calling a contact via WhatsApp
   const callWhatsApp = (phone: string) => {
-    // In a real app, this would open WhatsApp with the phone number
     window.open(`https://wa.me/${phone.replace(/\D/g, '')}`, '_blank');
     toast({
       title: "Opening WhatsApp",
@@ -232,7 +186,6 @@ const Contacts = () => {
   
   // Handle emailing a contact via Outlook
   const emailOutlook = (email: string) => {
-    // In a real app, this would open the default email client
     window.open(`mailto:${email}`, '_blank');
     toast({
       title: "Opening email client",
@@ -241,15 +194,27 @@ const Contacts = () => {
   };
   
   // Handle deleting a contact
-  const deleteContact = (contactId: number) => {
-    const contactToDelete = contacts.find(c => c.id === contactId);
-    if (!contactToDelete) return;
-    
-    setContacts(contacts.filter(contact => contact.id !== contactId));
-    toast({
-      title: "Contact deleted",
-      description: `${contactToDelete.name} has been removed from your contacts`
-    });
+  const deleteContact = async (contactId: number) => {
+    try {
+      const confirmed = window.confirm('Are you sure you want to delete this contact?');
+      if (!confirmed) return;
+
+      const success = await contactService.deleteContact(contactId);
+      if (success) {
+        setContacts(contacts.filter(contact => contact.id !== contactId));
+        toast({
+          title: "Contact deleted",
+          description: "The contact has been deleted successfully"
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete contact",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
