@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,82 +29,138 @@ import {
   PieChart as PieChartIcon,
   LineChart as LineChartIcon
 } from "lucide-react";
-
-// Sample monthly revenue data
-const monthlyRevenueData = [
-  { month: "Jan", revenue: 45000, expenses: 30000, profit: 15000 },
-  { month: "Feb", revenue: 48000, expenses: 32000, profit: 16000 },
-  { month: "Mar", revenue: 52000, expenses: 34000, profit: 18000 },
-  { month: "Apr", revenue: 55000, expenses: 36000, profit: 19000 },
-  { month: "May", revenue: 59000, expenses: 38000, profit: 21000 },
-  { month: "Jun", revenue: 62000, expenses: 40000, profit: 22000 },
-  { month: "Jul", revenue: 65000, expenses: 41000, profit: 24000 },
-  { month: "Aug", revenue: 68000, expenses: 43000, profit: 25000 },
-  { month: "Sep", revenue: 72000, expenses: 45000, profit: 27000 },
-  { month: "Oct", revenue: 76000, expenses: 47000, profit: 29000 },
-  { month: "Nov", revenue: 80000, expenses: 49000, profit: 31000 },
-  { month: "Dec", revenue: 85000, expenses: 52000, profit: 33000 },
-];
-
-// Sample revenue sources data for pie chart
-const revenueSources = [
-  { name: "Product Sales", value: 45 },
-  { name: "Services", value: 30 },
-  { name: "Subscriptions", value: 15 },
-  { name: "Other", value: 10 },
-];
+import { Order, getOrders } from '@/services/orderService';
+import { format } from "date-fns";
 
 // Colors for pie chart
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-// Calculate total revenue
-const totalRevenue = monthlyRevenueData.reduce((sum, item) => sum + item.revenue, 0);
-const totalProfit = monthlyRevenueData.reduce((sum, item) => sum + item.profit, 0);
-const totalExpenses = monthlyRevenueData.reduce((sum, item) => sum + item.expenses, 0);
-
-// Calculate YOY growth (assuming last year's revenue was 10% less)
-const lastYearRevenue = totalRevenue * 0.9;
-const revenueGrowth = ((totalRevenue - lastYearRevenue) / lastYearRevenue) * 100;
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(amount);
+};
 
 const RevenueReport = () => {
   const [selectedPeriod, setSelectedPeriod] = useState("year");
   const [chartType, setChartType] = useState("bar");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Filter data based on selected period
-  const getFilteredData = () => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth(); // 0-indexed (0 = January)
-    
-    switch (selectedPeriod) {
-      case "month":
-        // Current month only
-        return monthlyRevenueData.slice(currentMonth, currentMonth + 1);
-      case "quarter":
-        // Current quarter (assuming quarters align with calendar months)
-        const currentQuarter = Math.floor(currentMonth / 3);
-        const startMonth = currentQuarter * 3;
-        return monthlyRevenueData.slice(startMonth, startMonth + 3);
-      case "half":
-        // Current half-year
-        const isFirstHalf = currentMonth < 6;
-        return isFirstHalf 
-          ? monthlyRevenueData.slice(0, 6) 
-          : monthlyRevenueData.slice(6, 12);
-      case "year":
-      default:
-        // Full year
-        return monthlyRevenueData;
+  useEffect(() => {
+    fetchOrders();
+  }, [selectedPeriod]);
+
+  const fetchOrders = async () => {
+    try {
+      setIsLoading(true);
+      const currentDate = new Date();
+      let startDate: Date | undefined;
+      let endDate: Date | undefined;
+
+      switch (selectedPeriod) {
+        case "month":
+          startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+          endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+          break;
+        case "quarter":
+          const currentQuarter = Math.floor(currentDate.getMonth() / 3);
+          startDate = new Date(currentDate.getFullYear(), currentQuarter * 3, 1);
+          endDate = new Date(currentDate.getFullYear(), (currentQuarter + 1) * 3, 0);
+          break;
+        case "half":
+          const isFirstHalf = currentDate.getMonth() < 6;
+          startDate = new Date(currentDate.getFullYear(), isFirstHalf ? 0 : 6, 1);
+          endDate = new Date(currentDate.getFullYear(), isFirstHalf ? 5 : 11, 31);
+          break;
+        case "year":
+          startDate = new Date(currentDate.getFullYear(), 0, 1);
+          endDate = new Date(currentDate.getFullYear(), 11, 31);
+          break;
+      }
+
+      const ordersData = await getOrders({
+        start_date: startDate?.toISOString(),
+        end_date: endDate?.toISOString(),
+      });
+      setOrders(ordersData);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const filteredData = getFilteredData();
-  
-  // Calculate period totals
-  const periodTotals = {
-    revenue: filteredData.reduce((sum, item) => sum + item.revenue, 0),
-    expenses: filteredData.reduce((sum, item) => sum + item.expenses, 0),
-    profit: filteredData.reduce((sum, item) => sum + item.profit, 0),
+  // Process orders data for charts
+  const getChartData = () => {
+    const monthlyData = new Map();
+    
+    orders.forEach(order => {
+      const date = new Date(order.created_at);
+      const monthKey = format(date, 'MMM');
+      
+      if (!monthlyData.has(monthKey)) {
+        monthlyData.set(monthKey, {
+          month: monthKey,
+          revenue: 0,
+          expenses: 0,
+          profit: 0
+        });
+      }
+      
+      const data = monthlyData.get(monthKey);
+      data.revenue += order.total_amount;
+      // Assuming expenses are 70% of revenue for this example
+      data.expenses += order.total_amount * 0.7;
+      data.profit += order.total_amount * 0.3;
+    });
+
+    return Array.from(monthlyData.values());
   };
+
+  // Calculate revenue sources
+  const getRevenueSources = () => {
+    const sources = new Map();
+    
+    orders.forEach(order => {
+      order.order_items?.forEach(item => {
+        const category = (item.product as any)?.category || 'Other';
+        if (!sources.has(category)) {
+          sources.set(category, 0);
+        }
+        sources.set(category, sources.get(category) + (item.quantity * item.rate));
+      });
+    });
+
+    const total = Array.from(sources.values()).reduce((sum, value) => sum + value, 0);
+    
+    return Array.from(sources.entries()).map(([name, value]) => ({
+      name,
+      value: Math.round((value / total) * 100)
+    }));
+  };
+
+  const chartData = getChartData();
+  const revenueSources = getRevenueSources();
+  
+  // Calculate totals
+  const totals = chartData.reduce((acc, item) => ({
+    revenue: acc.revenue + item.revenue,
+    expenses: acc.expenses + item.expenses,
+    profit: acc.profit + item.profit
+  }), { revenue: 0, expenses: 0, profit: 0 });
+
+  // Calculate growth (comparing with previous period)
+  const calculateGrowth = () => {
+    if (chartData.length < 2) return 0;
+    const currentPeriod = chartData[chartData.length - 1].revenue;
+    const previousPeriod = chartData[chartData.length - 2].revenue;
+    return ((currentPeriod - previousPeriod) / previousPeriod) * 100;
+  };
+
+  const growth = calculateGrowth();
 
   return (
     <Layout>
@@ -131,10 +186,10 @@ const RevenueReport = () => {
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">${totals.revenue.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              <span className={`${revenueGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium`}>
-                {revenueGrowth >= 0 ? '+' : ''}{revenueGrowth.toFixed(1)}%
+              <span className={`${growth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium`}>
+                {growth >= 0 ? '+' : ''}{growth.toFixed(1)}%
               </span> from last year
             </p>
           </CardContent>
@@ -145,10 +200,10 @@ const RevenueReport = () => {
             <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalProfit.toLocaleString()}</div>
+            <div className="text-2xl font-bold">${totals.profit.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-green-500 font-medium">
-                {(totalProfit/totalRevenue*100).toFixed(1)}%
+                {(totals.profit/totals.revenue*100).toFixed(1)}%
               </span> profit margin
             </p>
           </CardContent>
@@ -159,10 +214,10 @@ const RevenueReport = () => {
             <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalExpenses.toLocaleString()}</div>
+            <div className="text-2xl font-bold">${totals.expenses.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-muted-foreground font-medium">
-                {(totalExpenses/totalRevenue*100).toFixed(1)}%
+                {(totals.expenses/totals.revenue*100).toFixed(1)}%
               </span> of revenue
             </p>
           </CardContent>
@@ -231,7 +286,7 @@ const RevenueReport = () => {
             <CardContent className="h-[400px]">
               {chartType === "bar" && (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={filteredData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -246,7 +301,7 @@ const RevenueReport = () => {
               
               {chartType === "line" && (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={filteredData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -292,15 +347,15 @@ const RevenueReport = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 border rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground mb-1">Revenue</div>
-                  <div className="text-2xl font-bold">${periodTotals.revenue.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">${totals.revenue.toLocaleString()}</div>
                 </div>
                 <div className="p-4 border rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground mb-1">Expenses</div>
-                  <div className="text-2xl font-bold">${periodTotals.expenses.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">${totals.expenses.toLocaleString()}</div>
                 </div>
                 <div className="p-4 border rounded-lg">
                   <div className="text-sm font-medium text-muted-foreground mb-1">Profit</div>
-                  <div className="text-2xl font-bold">${periodTotals.profit.toLocaleString()}</div>
+                  <div className="text-2xl font-bold">${totals.profit.toLocaleString()}</div>
                 </div>
               </div>
             </CardContent>
@@ -324,7 +379,7 @@ const RevenueReport = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredData.map((item) => (
+                  {chartData.map((item) => (
                     <TableRow key={item.month}>
                       <TableCell className="font-medium">{item.month}</TableCell>
                       <TableCell className="text-right">${item.revenue.toLocaleString()}</TableCell>
@@ -337,11 +392,11 @@ const RevenueReport = () => {
                   ))}
                   <TableRow className="font-bold">
                     <TableCell>TOTAL</TableCell>
-                    <TableCell className="text-right">${periodTotals.revenue.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">${periodTotals.expenses.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">${periodTotals.profit.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">${totals.revenue.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">${totals.expenses.toLocaleString()}</TableCell>
+                    <TableCell className="text-right">${totals.profit.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
-                      {(periodTotals.profit/periodTotals.revenue*100).toFixed(1)}%
+                      {(totals.profit/totals.revenue*100).toFixed(1)}%
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -402,7 +457,7 @@ const RevenueReport = () => {
                           </TableCell>
                           <TableCell className="text-right">{source.value}%</TableCell>
                           <TableCell className="text-right">
-                            ${((totalRevenue * source.value) / 100).toLocaleString()}
+                            ${((totals.revenue * source.value) / 100).toLocaleString()}
                           </TableCell>
                         </TableRow>
                       ))}

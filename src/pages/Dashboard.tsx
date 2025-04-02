@@ -36,6 +36,8 @@ import TaskManager from "@/components/Task/TaskManager";
 import { Link } from "react-router-dom";
 import { eventService, Event } from "@/services/eventService";
 import { documentService, Document } from "@/services/documentService";
+import { Order, getOrders } from '@/services/orderService';
+import { Badge } from "@/components/ui/badge";
 
 const data = [
   { name: "Jan", revenue: 4000, expenses: 2400 },
@@ -118,11 +120,37 @@ const lastWeekUsers = activeUsersData[activeUsersData.length - 1].count;
 const previousWeekUsers = activeUsersData[activeUsersData.length - 2].count;
 const userGrowth = ((lastWeekUsers - previousWeekUsers) / previousWeekUsers) * 100;
 
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+  
+  if (diffInHours < 24) {
+    return `${diffInHours} hours ago`;
+  } else {
+    return `${Math.floor(diffInHours / 24)} days ago`;
+  }
+};
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2
+  }).format(amount);
+};
+
 const Dashboard = () => {
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
   const [recentDocuments, setRecentDocuments] = useState<Document[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
+  const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalCustomers, setTotalCustomers] = useState(0);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [avgOrderValue, setAvgOrderValue] = useState(0);
 
   useEffect(() => {
     const fetchUpcomingEvents = async () => {
@@ -147,8 +175,34 @@ const Dashboard = () => {
       }
     };
 
+    const fetchOrdersData = async () => {
+      try {
+        const orders = await getOrders({});
+        // Sort orders by created_at in descending order and take the 2 most recent
+        const recent = orders.sort((a, b) => 
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ).slice(0, 2);
+        setRecentOrders(recent);
+
+        // Calculate metrics
+        const total = orders.reduce((sum, order) => sum + order.total_amount, 0);
+        setTotalRevenue(total);
+        setTotalOrders(orders.length);
+        setAvgOrderValue(orders.length > 0 ? total / orders.length : 0);
+        
+        // Get unique customers
+        const uniqueCustomers = new Set(orders.map(order => order.customer?.id)).size;
+        setTotalCustomers(uniqueCustomers);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    };
+
     fetchUpcomingEvents();
     fetchRecentDocuments();
+    fetchOrdersData();
   }, []);
 
   const formatDate = (dateString: string) => {
@@ -189,53 +243,53 @@ const Dashboard = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
             <p className="text-xs text-muted-foreground">
-              <span className={`${revenueGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium flex items-center`}>
-                {revenueGrowth >= 0 ? '+' : ''}{revenueGrowth.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
-              </span> from last month
+              <span className="text-green-500 font-medium flex items-center">
+                From {totalOrders} orders
+              </span>
             </p>
           </CardContent>
         </Card>
         <Card className="scale-enter" style={{ animationDelay: "0.1s" }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New Customers</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{newCustomers.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{totalCustomers}</div>
             <p className="text-xs text-muted-foreground">
-              <span className={`${customerGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium flex items-center`}>
-                {customerGrowth >= 0 ? '+' : ''}{customerGrowth.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
-              </span> from last month
+              <span className="text-green-500 font-medium flex items-center">
+                Active customers
+              </span>
             </p>
           </CardContent>
         </Card>
         <Card className="scale-enter" style={{ animationDelay: "0.2s" }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{totalSales.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{totalOrders}</div>
             <p className="text-xs text-muted-foreground">
-              <span className={`${salesGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium flex items-center`}>
-                {salesGrowth >= 0 ? '+' : ''}{salesGrowth.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
-              </span> from last month
+              <span className="text-green-500 font-medium flex items-center">
+                All time orders
+              </span>
             </p>
           </CardContent>
         </Card>
         <Card className="scale-enter" style={{ animationDelay: "0.3s" }}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg. Order Value</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+{activeUsers}</div>
+            <div className="text-2xl font-bold">{formatCurrency(avgOrderValue)}</div>
             <p className="text-xs text-muted-foreground">
-              <span className={`${userGrowth >= 0 ? 'text-green-500' : 'text-red-500'} font-medium flex items-center`}>
-                {userGrowth >= 0 ? '+' : ''}{userGrowth.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
-              </span> from last week
+              <span className="text-green-500 font-medium flex items-center">
+                Per order
+              </span>
             </p>
           </CardContent>
         </Card>
@@ -383,8 +437,29 @@ const Dashboard = () => {
                 <ShoppingCart className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-sm">Premium Plan - Acme Inc.</div>
-                <p className="text-xs text-muted-foreground">$2,500.00 - 2 hours ago</p>
+                {isLoadingOrders ? (
+                  <div className="text-sm text-muted-foreground">Loading recent sales...</div>
+                ) : recentOrders.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentOrders.map((order) => (
+                      <div key={order.id} className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium">
+                            {order.customer?.name || 'Unknown Customer'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {formatCurrency(order.total_amount)} - {formatTimeAgo(order.created_at)}
+                          </div>
+                        </div>
+                        <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
+                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">No recent sales</div>
+                )}
               </CardContent>
             </Card>
           </div>

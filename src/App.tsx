@@ -28,6 +28,7 @@ import RevenueReport from "./pages/RevenueReport";
 import Login from "./pages/Login";
 import EditInvoice from "./pages/EditInvoice";
 import emailjs from '@emailjs/browser';
+import Orders from '@/pages/Orders';
 
 // Initialize EmailJS
 emailjs.init(import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '');
@@ -93,6 +94,11 @@ const AppRoutes = () => {
       <Route path="/sales" element={
         <ProtectedRoute>
           <Sales />
+        </ProtectedRoute>
+      } />
+      <Route path="/orders" element={
+        <ProtectedRoute>
+          <Orders />
         </ProtectedRoute>
       } />
       <Route path="/inventory" element={

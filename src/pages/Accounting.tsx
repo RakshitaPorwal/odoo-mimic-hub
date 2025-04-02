@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
@@ -549,7 +548,9 @@ const Accounting = () => {
                     {transactions.map((transaction) => (
                       <tr key={transaction.id} className="border-b hover:bg-muted/50">
                         <td className="py-3 text-sm">
-                          {format(transaction.date, "MMM d, yyyy")}
+                          {transaction.date instanceof Date && !isNaN(transaction.date.getTime())
+                            ? format(transaction.date, "MMM d, yyyy")
+                            : "Invalid Date"}
                         </td>
                         <td className="py-3 text-sm max-w-[200px] truncate">
                           {transaction.description || "-"}
@@ -708,36 +709,40 @@ const Accounting = () => {
                         {invoices.slice(0, 5).map((invoice) => (
                           <tr key={invoice.id} className="border-b hover:bg-muted/50">
                             <td className="py-3 text-sm font-medium">
-                              {invoice.invoice_number}
+                              {invoice?.invoice_number || 'N/A'}
                             </td>
                             <td className="py-3 text-sm">
-                              {invoice.customer_name}
+                              {invoice?.customer_name || 'N/A'}
                             </td>
                             <td className="py-3 text-sm">
-                              {format(new Date(invoice.invoice_date), "MMM d, yyyy")}
+                              {invoice?.invoice_date && new Date(invoice.invoice_date).toString() !== 'Invalid Date'
+                                ? format(new Date(invoice.invoice_date), "MMM d, yyyy")
+                                : "N/A"}
                             </td>
                             <td className="py-3 text-sm">
-                              {format(new Date(invoice.due_date), "MMM d, yyyy")}
+                              {invoice?.due_date && new Date(invoice.due_date).toString() !== 'Invalid Date'
+                                ? format(new Date(invoice.due_date), "MMM d, yyyy")
+                                : "N/A"}
                             </td>
                             <td className="py-3 text-sm">
                               <Badge 
                                 className={
-                                  invoice.status === "paid" 
+                                  (invoice?.status || 'draft') === "paid" 
                                     ? "bg-green-500" : 
-                                  invoice.status === "overdue" 
+                                  (invoice?.status || 'draft') === "overdue" 
                                     ? "bg-amber-500" : 
-                                  invoice.status === "cancelled" 
+                                  (invoice?.status || 'draft') === "cancelled" 
                                     ? "bg-red-500" : 
-                                  invoice.status === "sent" 
+                                  (invoice?.status || 'draft') === "sent" 
                                     ? "bg-blue-500" : 
                                   "bg-gray-500"
                                 }
                               >
-                                {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                                {(invoice?.status || 'draft').charAt(0).toUpperCase() + (invoice?.status || 'draft').slice(1)}
                               </Badge>
                             </td>
                             <td className="py-3 text-sm text-right font-medium">
-                              ${invoice.total_amount.toLocaleString(undefined, {
+                              ${(invoice?.total_amount || 0).toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2
                               })}
