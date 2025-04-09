@@ -285,24 +285,18 @@ const Sales = () => {
   const fetchOrders = async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching orders with filters:', { 
-        status: selectedStatus, 
-        dateRange: selectedDateRange,
-        startDate,
-        endDate
-      });
-      const data = await getOrders({
-        status: selectedStatus === 'all' ? undefined : selectedStatus as Order['status'],
-        date_range: selectedDateRange,
+      const orders = await getOrders({
+        status: selectedStatus !== 'all' ? selectedStatus as Order['status'] : undefined,
         start_date: startDate,
         end_date: endDate,
+        date_range: selectedDateRange !== 'all' ? selectedDateRange : undefined
       });
-      console.log('Fetched orders:', data);
-      setOrders(data || []);
+      
+      setOrders(orders);
+      setFilteredOrders(orders);
+      console.log('Fetched orders:', orders);
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast.error('Failed to fetch orders');
-      setOrders([]);
     } finally {
       setIsLoading(false);
     }
@@ -359,6 +353,12 @@ const Sales = () => {
     fetchUnfilteredOrders();
     fetchCustomers();
     fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    if (selectedStatus !== 'all' || selectedDateRange !== 'all' || startDate || endDate) {
+      fetchOrders();
+    }
   }, [selectedStatus, selectedDateRange, startDate, endDate]);
 
   useEffect(() => {
@@ -447,55 +447,20 @@ const Sales = () => {
   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   const applyFilters = () => {
-    setIsFilterApplied(true);
-    
-    // Filter orders
-    const filteredOrdersResult = orders.filter(order => {
-      if (!order || !order.order_number) return false;
-      
-      const customerName = order.customer?.name || '';
-      const matchesSearch = !searchQuery || 
-        order.order_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        customerName.toLowerCase().includes(searchQuery.toLowerCase());
-        
-      const matchesOrderNumber = !orderNumberFilter || 
-        order.order_number.toLowerCase().includes(orderNumberFilter.toLowerCase());
-        
-      return matchesSearch && matchesOrderNumber;
+    const filtered = orders.filter((order) => {
+      const matchesSearch = searchQuery
+        ? order.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          order.order_number.toLowerCase().includes(searchQuery.toLowerCase())
+        : true;
+      const matchesOrderNumber = orderNumberFilter
+        ? order.order_number.toLowerCase().includes(orderNumberFilter.toLowerCase())
+        : true;
+      const matchesCustomerName = customerNameFilter
+        ? order.customer.name.toLowerCase().includes(customerNameFilter.toLowerCase())
+        : true;
+      return matchesSearch && matchesOrderNumber && matchesCustomerName;
     });
-    console.log('Applying filters:', {
-      searchQuery,
-      orderNumberFilter,
-      totalOrders: orders.length,
-      filteredOrders: filteredOrdersResult.length
-    });
-    setFilteredOrders(filteredOrdersResult);
-
-    // Filter customers
-    const filteredCustomersResult = customers.filter(customer => {
-      const matchesName = !customerNameFilter || 
-        customer.name.toLowerCase().includes(customerNameFilter.toLowerCase());
-      const matchesEmail = !customerEmailFilter || 
-        customer.email.toLowerCase().includes(customerEmailFilter.toLowerCase());
-      const matchesPhone = !customerPhoneFilter || 
-        (customer.phone && customer.phone.toLowerCase().includes(customerPhoneFilter.toLowerCase()));
-      
-      return matchesName && matchesEmail && matchesPhone;
-    });
-    setFilteredCustomers(filteredCustomersResult);
-
-    // Filter products
-    const filteredProductsResult = products.filter(product => {
-      const matchesName = !productNameFilter || 
-        product.name.toLowerCase().includes(productNameFilter.toLowerCase());
-      const matchesCategory = productCategoryFilter === 'all' || 
-        (product as any).category?.toLowerCase() === productCategoryFilter.toLowerCase();
-      const matchesPriceRange = (!minPrice || product.price >= parseFloat(minPrice)) && 
-        (!maxPrice || product.price <= parseFloat(maxPrice));
-      
-      return matchesName && matchesCategory && matchesPriceRange;
-    });
-    setFilteredProducts(filteredProductsResult);
+    setFilteredOrders(filtered);
   };
 
   const resetFilters = () => {

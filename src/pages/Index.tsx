@@ -1,19 +1,10 @@
-
-import React, { useEffect } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigate("/dashboard");
-    }, 3000); // Auto-redirect after 3 seconds
-
-    return () => clearTimeout(timer);
-  }, [navigate]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
@@ -36,21 +27,19 @@ const Index = () => {
         
         <Button 
           size="lg" 
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/login")}
           className="button-transition group"
         >
-          Enter Dashboard
+          Login to Dashboard
           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
         </Button>
       </div>
       
-      <div className="absolute bottom-8 left-0 right-0 text-center text-sm text-muted-foreground">
-        <p>Redirecting to dashboard in a few seconds...</p>
-      </div>
-      
       {/* Background decoration */}
-      <div className="absolute -right-40 -top-40 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
-      <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-primary/10 rounded-full blur-3xl"></div>
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/10 rounded-full blur-3xl"></div>
+      </div>
     </div>
   );
 };

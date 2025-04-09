@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, RefreshCw, Edit, Copy, Trash, FilePlus, Search, Filter, Download, AlertCircle, Loader2, ShoppingCart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem } from "@/services/inventoryService";
+import { getInventoryItems, createInventoryItem, updateInventoryItem, deleteInventoryItem, InventoryItem } from "@/services/inventoryService";
 import { Layout } from "@/components/Layout/Layout";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { EditInventoryModal } from "@/components/EditInventoryModal";
 
 export default function Inventory() {
   const navigate = useNavigate();
@@ -66,11 +67,12 @@ export default function Inventory() {
   const [stockFilter, setStockFilter] = useState<string>("");
   const [selectedItems, setSelectedItems] = useState<InventoryItem[]>([]);
   const [isCreateInvoiceDialogOpen, setIsCreateInvoiceDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
   // Form state for new inventory item
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
     category: "",
     stock: 0,
     value: 0,
@@ -150,7 +152,6 @@ export default function Inventory() {
   const resetForm = () => {
     setFormData({
       name: "",
-      description: "",
       category: "",
       stock: 0,
       value: 0,
@@ -169,7 +170,11 @@ export default function Inventory() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate(formData);
+    const itemData = {
+      ...formData,
+      updated_at: new Date().toISOString()
+    };
+    createMutation.mutate(itemData);
   };
 
   const handleDelete = (id: number) => {
@@ -191,7 +196,7 @@ export default function Inventory() {
     });
   };
 
-  const handleRemoveFromInvoice = (itemId: number) => {
+  const handleRemoveFromInvoice = (itemId: string) => {
     setSelectedItems(prev => prev.filter(item => item.id !== itemId));
     toast({
       title: "Item removed",
@@ -209,6 +214,11 @@ export default function Inventory() {
       return;
     }
     navigate(`/create-invoice?items=${encodeURIComponent(JSON.stringify(selectedItems))}`);
+  };
+
+  const handleEdit = (item: InventoryItem) => {
+    setEditingItem(item);
+    setIsEditDialogOpen(true);
   };
 
   // Filter items based on search term and other filters
@@ -482,7 +492,7 @@ export default function Inventory() {
                                     >
                                       <ShoppingCart className="h-4 w-4" />
                                     </Button>
-                                    <Button variant="ghost" size="icon">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
                                       <Edit className="h-4 w-4" />
                                     </Button>
                                     <Button 
@@ -506,7 +516,7 @@ export default function Inventory() {
                                         <DropdownMenuItem>
                                           <Copy className="h-4 w-4 mr-2" /> Copy ID
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => handleCreateInvoice(item)}>
+                                        <DropdownMenuItem onClick={handleCreateInvoice}>
                                           <FilePlus className="h-4 w-4 mr-2" /> Create Invoice
                                         </DropdownMenuItem>
                                       </DropdownMenuContent>
@@ -553,8 +563,8 @@ export default function Inventory() {
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
                                     <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => handleCreateInvoice(item)}>
-                                      <FilePlus className="h-4 w-4 mr-2" /> Create Invoice
+                                    <DropdownMenuItem onClick={() => handleEdit(item)}>
+                                      <Edit className="h-4 w-4 mr-2" /> Edit
                                     </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => handleDelete(item.id)}>
                                       <Trash className="h-4 w-4 mr-2" /> Delete
@@ -663,18 +673,6 @@ export default function Inventory() {
                     placeholder="e.g. Electronics, Stationery"
                   />
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  placeholder="Item description"
-                  rows={3}
-                />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -846,6 +844,17 @@ export default function Inventory() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {editingItem && (
+        <EditInventoryModal
+          isOpen={isEditDialogOpen}
+          onClose={() => {
+            setIsEditDialogOpen(false);
+            setEditingItem(null);
+          }}
+          item={editingItem}
+        />
+      )}
     </Layout>
   );
 }

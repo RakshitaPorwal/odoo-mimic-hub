@@ -57,8 +57,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const AppRoutes = () => {
   return (
     <Routes>
+      <Route path="/" element={<Login />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Index />} />
       
       {/* Protected Routes */}
       <Route path="/dashboard" element={
@@ -136,6 +136,16 @@ const AppRoutes = () => {
           <Reports />
         </ProtectedRoute>
       } />
+      <Route path="/task-report" element={
+        <ProtectedRoute>
+          <TaskReport />
+        </ProtectedRoute>
+      } />
+      <Route path="/revenue-report" element={
+        <ProtectedRoute>
+          <RevenueReport />
+        </ProtectedRoute>
+      } />
       <Route path="/crm" element={
         <ProtectedRoute>
           <Crm />
@@ -151,18 +161,6 @@ const AppRoutes = () => {
           <Settings />
         </ProtectedRoute>
       } />
-      <Route path="/task-report" element={
-        <ProtectedRoute>
-          <TaskReport />
-        </ProtectedRoute>
-      } />
-      <Route path="/revenue-report" element={
-        <ProtectedRoute>
-          <RevenueReport />
-        </ProtectedRoute>
-      } />
-      
-      {/* Catch-all route */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

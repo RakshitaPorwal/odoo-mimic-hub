@@ -13,6 +13,7 @@ function generateInvoiceNumber(): string {
 export interface Invoice {
   id: string;
   invoice_number: string;
+  user_id: string;
   // Seller Information
   seller_name: string;
   seller_address: string;
@@ -81,13 +82,28 @@ export interface InvoiceItem {
 
 // Get all invoices
 export async function getInvoices() {
-  const { data, error } = await supabase
-    .from('invoices')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
 
-  if (error) throw error;
-  return data;
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching invoices:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in getInvoices:', error);
+    throw error;
+  }
 }
 
 // Get a single invoice by ID
@@ -107,38 +123,67 @@ export async function getInvoice(id: string) {
 
 // Create a new invoice
 export async function createInvoice(invoice: Omit<Invoice, "id" | "created_at" | "updated_at">) {
-  const { data, error } = await supabase
-    .from("invoices")
-    .insert([
-      {
-        ...invoice,
-        invoice_number: generateInvoiceNumber(),
-      },
-    ])
-    .select()
-    .single();
+  try {
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
 
-  if (error) throw error;
-  return data;
+    const { data, error } = await supabase
+      .from("invoices")
+      .insert([
+        {
+          ...invoice,
+          invoice_number: generateInvoiceNumber(),
+          user_id: session.user.id, // Add user_id to associate with the authenticated user
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating invoice:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in createInvoice:', error);
+    throw error;
+  }
 }
 
-// Add invoice items
-export async function addInvoiceItems(items: Omit<InvoiceItem, "id" | "created_at">[]) {
-  const { data, error } = await supabase
-    .from("invoice_items")
-    .insert(items.map(item => ({
-      ...item,
-      description_of_goods: item.description_of_goods || "",
-      category: item.category || "",
-      unit_of_measure: item.unit_of_measure || "PCS",
-      available_stock: item.available_stock || 0,
-      current_stock: item.current_stock || 0,
-    })))
-    .select()
-    .single();
+// Add items to an invoice
+export async function addInvoiceItems(invoiceId: number, items: Omit<InvoiceItem, "id" | "created_at" | "updated_at">[]) {
+  try {
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
 
-  if (error) throw error;
-  return data;
+    const { data, error } = await supabase
+      .from("invoice_items")
+      .insert(
+        items.map(item => ({
+          ...item,
+          invoice_id: invoiceId,
+          user_id: session.user.id, // Add user_id to associate with the authenticated user
+        }))
+      )
+      .select();
+
+    if (error) {
+      console.error('Error adding invoice items:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in addInvoiceItems:', error);
+    throw error;
+  }
 }
 
 // Update an invoice

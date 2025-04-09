@@ -1,9 +1,8 @@
 import { supabase } from '@/lib/supabase';
 
-export interface InventoryItem {
-  id: number;
+export type InventoryItem = {
+  id: string;
   name: string;
-  description: string | null;
   category: string | null;
   stock: number;
   value: number;
@@ -19,7 +18,7 @@ export interface InventoryItem {
   sgst_rate: number;
   created_at: string;
   updated_at: string;
-}
+};
 
 // Get all inventory items
 export async function getInventoryItems() {
@@ -53,10 +52,25 @@ export async function getInventoryItem(id: number) {
 }
 
 // Create a new inventory item
-export async function createInventoryItem(item: Omit<InventoryItem, 'id' | 'created_at' | 'last_updated'>) {
+export async function createInventoryItem(item: Omit<InventoryItem, 'id' | 'created_at'>) {
   const { data, error } = await supabase
     .from('inventory')
-    .insert([item])
+    .insert([{
+      name: item.name,
+      category: item.category,
+      stock: item.stock,
+      value: item.value,
+      location: item.location,
+      supplier: item.supplier,
+      unit_of_measure: item.unit_of_measure,
+      hsn_code: item.hsn_code,
+      batch_number: item.batch_number,
+      reorder_level: item.reorder_level,
+      reorder_quantity: item.reorder_quantity,
+      stock_valuation_method: item.stock_valuation_method,
+      cgst_rate: item.cgst_rate,
+      sgst_rate: item.sgst_rate
+    }])
     .select()
     .single();
 
@@ -87,15 +101,36 @@ export async function updateInventoryItem(id: number, updates: Partial<Inventory
 
 // Delete an inventory item
 export async function deleteInventoryItem(id: number) {
-  const { error } = await supabase
-    .from('inventory')
-    .delete()
-    .eq('id', id);
+  try {
+    // First, check if the item is referenced in any invoice items
+    const { data: invoiceItems, error: checkError } = await supabase
+      .from('invoice_items')
+      .select('id')
+      .eq('item_id', id);
 
-  if (error) {
-    console.error('Error deleting inventory item:', error);
+    if (checkError) {
+      console.error('Error checking invoice items:', checkError);
+      throw checkError;
+    }
+
+    if (invoiceItems && invoiceItems.length > 0) {
+      throw new Error('Cannot delete item: It is referenced in existing invoices');
+    }
+
+    // If no references found, proceed with deletion
+    const { error } = await supabase
+      .from('inventory')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting inventory item:', error);
+      throw error;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error in deleteInventoryItem:', error);
     throw error;
   }
-
-  return true;
 }

@@ -85,8 +85,6 @@ export const getOrders = async (filters: {
   end_date?: string;
   date_range?: 'lastweek' | 'lastmonth' | '6months' | '1year' | 'all';
 }) => {
-  console.log('Fetching orders with filters:', filters);
-  
   let query = supabase
     .from('orders')
     .select(`
@@ -107,7 +105,6 @@ export const getOrders = async (filters: {
     query = query.eq('customer_id', filters.customer_id);
   }
 
-  // Handle date range filtering
   if (filters.date_range) {
     const now = new Date();
     let startDate = new Date();
@@ -132,7 +129,6 @@ export const getOrders = async (filters: {
     }
   }
 
-  // Handle custom date range if provided
   if (filters.start_date) {
     query = query.gte('created_at', filters.start_date);
   }
@@ -144,12 +140,10 @@ export const getOrders = async (filters: {
   const { data, error } = await query;
 
   if (error) {
-    console.error('Error fetching orders:', error);
-    throw error;
+    throw new Error(`Database error: ${error.message}`);
   }
 
-  console.log('Fetched orders from database:', data);
-  return data;
+  return data || [];
 };
 
 export const calculateOrderTotal = (items: Order['order_items']) => {
