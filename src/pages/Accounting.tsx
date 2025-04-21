@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Layout } from "@/components/Layout/Layout";
 import { Header } from "@/components/Header/Header";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  LineChart,
-  Line
 } from "recharts";
 import { 
   Plus, 
@@ -31,7 +29,8 @@ import {
   RefreshCw,
   ArrowDownRight,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  Trash2
 } from "lucide-react";
 import {
   Dialog,
@@ -55,116 +54,100 @@ import {
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getTransactions, addTransaction, deleteTransaction, calculateFinancialReports } from "@/services/accountingService";
 import { getInvoices } from "@/services/invoiceService";
 import { toast } from "@/hooks/use-toast";
-
-// Mock transaction data
-const transactionsData = [
-  {
-    id: 1,
-    date: new Date(2023, 7, 5),
-    type: "Income",
-    category: "Sales Revenue",
-    amount: 5000,
-    description: "Monthly subscription payments",
-    paymentMethod: "Bank Transfer",
-    reference: "INV-2023-001",
-  },
-  {
-    id: 2,
-    date: new Date(2023, 7, 8),
-    type: "Expense",
-    category: "Office Expenses",
-    amount: -1200,
-    description: "Office rent for August",
-    paymentMethod: "Bank Transfer",
-    reference: "RENT-2023-08",
-  },
-  {
-    id: 3,
-    date: new Date(2023, 7, 12),
-    type: "Expense",
-    category: "Utilities",
-    amount: -350,
-    description: "Electricity bill",
-    paymentMethod: "Credit Card",
-    reference: "UTIL-2023-08-E",
-  },
-  {
-    id: 4,
-    date: new Date(2023, 7, 15),
-    type: "Income",
-    category: "Consulting",
-    amount: 3500,
-    description: "Consulting services for Client XYZ",
-    paymentMethod: "Bank Transfer",
-    reference: "INV-2023-002",
-  },
-  {
-    id: 5,
-    date: new Date(2023, 7, 20),
-    type: "Expense",
-    category: "Salaries",
-    amount: -8500,
-    description: "Employee salaries for August",
-    paymentMethod: "Bank Transfer",
-    reference: "SAL-2023-08",
-  },
-];
-
-// Monthly data for charts with updated values to match card metrics
-const monthlyData = [
-  { name: "Jan", income: 6000, expenses: 4000, profit: 2000 },
-  { name: "Feb", income: 7500, expenses: 5000, profit: 2500 },
-  { name: "Mar", income: 9000, expenses: 6000, profit: 3000 },
-  { name: "Apr", income: 10000, expenses: 7500, profit: 2500 },
-  { name: "May", income: 11000, expenses: 7000, profit: 4000 },
-  { name: "Jun", income: 12500, expenses: 8000, profit: 4500 },
-  { name: "Jul", income: 13500, expenses: 9000, profit: 4500 },
-  { name: "Aug", income: 15000, expenses: 10000, profit: 5000 },
-  { name: "Sep", income: 16500, expenses: 11000, profit: 5500 },
-  { name: "Oct", income: 17500, expenses: 11500, profit: 6000 },
-  { name: "Nov", income: 18500, expenses: 12000, profit: 6500 },
-  { name: "Dec", income: 20000, expenses: 13000, profit: 7000 }
-];
-
-// Customer growth data
-const customerData = [
-  { month: "Sep", count: 2100 },
-  { month: "Oct", count: 2200 },
-  { month: "Nov", count: 2250 },
-  { month: "Dec", count: 2350 }
-];
-
-// Sales data
-const salesData = [
-  { month: "Sep", sales: 11200 },
-  { month: "Oct", sales: 11700 },
-  { month: "Nov", sales: 11900 },
-  { month: "Dec", sales: 12234 }
-];
-
-// User activity data
-const userActivityData = [
-  { week: "Week 1", users: 530 },
-  { week: "Week 2", users: 510 },
-  { week: "Week 3", users: 560 },
-  { week: "Week 4", users: 573 }
-];
+import { Transaction } from "@/types/transaction";
 
 const Accounting = () => {
   const navigate = useNavigate();
-  const [transactions, setTransactions] = useState(transactionsData);
+  const queryClient = useQueryClient();
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
-  const [newTransaction, setNewTransaction] = useState({
-    date: format(new Date(), "yyyy-MM-dd"),
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    startDate: "",
+    endDate: "",
+    type: "all",
+    category: "",
+    payment_method: "all"
+  });
+  const [newTransaction, setNewTransaction] = useState<{
+    date: string;
+    type: "Income" | "Expense" | "Transfer";
+    category: string;
+    amount: string;
+    description: string;
+    payment_method: "Cash" | "Bank Transfer" | "Credit Card" | "UPI" | "Check";
+    reference: string;
+  }>({
+    date: new Date().toISOString().split('T')[0],
     type: "Income",
     category: "",
     amount: "",
     description: "",
-    paymentMethod: "Bank Transfer",
-    reference: "",
+    payment_method: "Cash",
+    reference: ""
+  });
+
+  // Fetch transactions with error handling and logging
+  const { data: transactions = [], isLoading: transactionsLoading, error: transactionsError } = useQuery<Transaction[]>({
+    queryKey: ["transactions"],
+    queryFn: async () => {
+      try {
+        const data = await getTransactions();
+        console.log('Fetched transactions:', data);
+        return data;
+      } catch (error) {
+        console.error('Error fetching transactions:', error);
+        throw error;
+      }
+    },
+  });
+
+  // Fetch financial reports with error handling and logging
+  const { data: financialReports, isLoading: reportsLoading, error: reportsError } = useQuery<{
+    profitAndLoss: {
+      income: number;
+      expenses: number;
+      profit: number;
+    };
+    cashFlow: {
+      inflow: number;
+      outflow: number;
+      netFlow: number;
+    };
+    balanceSheet: {
+      assets: number;
+      liabilities: number;
+      netWorth: number;
+    };
+    taxReport: {
+      incomeByCategory: Record<string, number>;
+      estimatedTax: number;
+    };
+  }>({
+    queryKey: ["financialReports"],
+    queryFn: async () => {
+      try {
+        const data = await calculateFinancialReports();
+        console.log('Fetched financial reports:', data);
+        return data;
+      } catch (error) {
+        console.error('Error fetching financial reports:', error);
+        throw error;
+      }
+    },
+  });
+
+  // Log the current state
+  console.log('Current state:', {
+    transactionsLoading,
+    reportsLoading,
+    transactionsError,
+    reportsError,
+    transactions,
+    financialReports
   });
 
   // Fetch invoices
@@ -173,91 +156,191 @@ const Accounting = () => {
     queryFn: getInvoices,
   });
 
-  // Calculate total income
-  const currentMonthIncome = monthlyData[monthlyData.length - 1].income;
-  const prevMonthIncome = monthlyData[monthlyData.length - 2].income;
-  const incomeGrowthRate = ((currentMonthIncome - prevMonthIncome) / prevMonthIncome) * 100;
-
-  // Calculate total income from transactions
-  const totalIncome = transactions
-    .filter((t) => t.type === "Income")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  // Calculate total expenses (absolute value)
-  const totalExpenses = Math.abs(
-    transactions
-      .filter((t) => t.type === "Expense")
-      .reduce((sum, t) => sum + t.amount, 0)
-  );
-
-  // Calculate net profit
-  const netProfit = totalIncome - totalExpenses;
-
-  // Calculate customer growth
-  const currentMonthCustomers = customerData[customerData.length - 1].count;
-  const prevMonthCustomers = customerData[customerData.length - 2].count;
-  const customerGrowthRate = ((currentMonthCustomers - prevMonthCustomers) / prevMonthCustomers) * 100;
-
-  // Calculate sales growth
-  const currentMonthSales = salesData[salesData.length - 1].sales;
-  const prevMonthSales = salesData[salesData.length - 2].sales;
-  const salesGrowthRate = ((currentMonthSales - prevMonthSales) / prevMonthSales) * 100;
-
-  // Calculate user activity growth
-  const currentWeekUsers = userActivityData[userActivityData.length - 1].users;
-  const prevWeekUsers = userActivityData[userActivityData.length - 2].users;
-  const userGrowthRate = ((currentWeekUsers - prevWeekUsers) / prevWeekUsers) * 100;
-
-  // Calculate total revenue including previous months
-  const totalRevenue = monthlyData.reduce((sum, month) => sum + month.income, 0);
-
-  const handleAddTransaction = () => {
-    if (!newTransaction.category || !newTransaction.amount) {
+  // Add transaction mutation
+  const addTransactionMutation = useMutation({
+    mutationFn: addTransaction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions", "financialReports"] });
+      setIsAddTransactionOpen(false);
+      resetTransactionForm();
       toast({
-        title: "Required fields missing",
-        description: "Please fill in the category and amount fields",
+        title: "Transaction added",
+        description: "The transaction has been successfully added.",
+      });
+    },
+  });
+
+  // Delete transaction mutation
+  const deleteTransactionMutation = useMutation({
+    mutationFn: deleteTransaction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["transactions", "financialReports"] });
+      toast({
+        title: "Transaction deleted",
+        description: "The transaction has been successfully deleted.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting transaction:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete transaction. Please try again.",
         variant: "destructive"
       });
-      return;
     }
+  });
 
-    const amount =
-      newTransaction.type === "Expense"
-        ? -Math.abs(parseFloat(newTransaction.amount))
-        : Math.abs(parseFloat(newTransaction.amount));
+  const handleAddTransaction = () => {
+    try {
+      console.log('New transaction data:', newTransaction);
 
-    const transactionWithId = {
-      ...newTransaction,
-      id: transactions.length > 0 ? Math.max(...transactions.map((t) => t.id)) + 1 : 1,
-      date: new Date(newTransaction.date),
-      amount: amount,
-    };
+      if (!newTransaction.category || !newTransaction.amount) {
+        toast({
+          title: "Required fields missing",
+          description: "Please fill in the category and amount fields",
+          variant: "destructive"
+        });
+        return;
+      }
 
-    setTransactions([transactionWithId, ...transactions]);
-    setIsAddTransactionOpen(false);
-    resetTransactionForm();
-    
-    toast({
-      title: "Transaction added",
-      description: `A new ${newTransaction.type.toLowerCase()} transaction has been added.`
-    });
+      const amount = parseFloat(newTransaction.amount);
+      if (isNaN(amount)) {
+        toast({
+          title: "Invalid amount",
+          description: "Please enter a valid number for the amount",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const transaction: Omit<Transaction, 'id'> = {
+        date: new Date(newTransaction.date),
+        type: newTransaction.type,
+        category: newTransaction.category,
+        amount: parseFloat(newTransaction.amount),
+        description: newTransaction.description,
+        payment_method: newTransaction.payment_method,
+        reference: newTransaction.reference
+      };
+
+      console.log('Prepared transaction for submission:', transaction);
+
+      addTransactionMutation.mutate(transaction, {
+        onSuccess: () => {
+          console.log('Transaction added successfully');
+          toast({
+            title: "Success",
+            description: "Transaction added successfully",
+          });
+          setIsAddTransactionOpen(false);
+          resetTransactionForm();
+        },
+        onError: (error) => {
+          console.error('Error adding transaction:', error);
+          toast({
+            title: "Error",
+            description: "Failed to add transaction. Please try again.",
+            variant: "destructive"
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Error in handleAddTransaction:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleDeleteTransaction = async (id: number) => {
+    if (window.confirm("Are you sure you want to delete this transaction?")) {
+      try {
+        await deleteTransactionMutation.mutateAsync(id);
+        // Optimistically update the UI
+        queryClient.setQueryData<Transaction[]>(["transactions"], (old) => 
+          old?.filter(transaction => transaction.id !== id) || []
+        );
+      } catch (error) {
+        console.error('Error in handleDeleteTransaction:', error);
+      }
+    }
   };
 
   const resetTransactionForm = () => {
     setNewTransaction({
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: new Date().toISOString().split('T')[0],
       type: "Income",
       category: "",
       amount: "",
       description: "",
-      paymentMethod: "Bank Transfer",
-      reference: "",
+      payment_method: "Cash",
+      reference: ""
     });
   };
 
   const handleCreateInvoice = () => {
     navigate("/create-invoice");
   };
+
+  const filteredTransactions = transactions.filter(transaction => {
+    const matchesDate = (!filters.startDate || new Date(transaction.date) >= new Date(filters.startDate)) &&
+                       (!filters.endDate || new Date(transaction.date) <= new Date(filters.endDate));
+    const matchesType = filters.type === "all" || transaction.type === filters.type;
+    const matchesCategory = !filters.category || transaction.category.toLowerCase().includes(filters.category.toLowerCase());
+    const matchesPaymentMethod = filters.payment_method === "all" || transaction.payment_method === filters.payment_method;
+    
+    return matchesDate && matchesType && matchesCategory && matchesPaymentMethod;
+  });
+
+  const resetFilters = () => {
+    setFilters({
+      startDate: "",
+      endDate: "",
+      type: "all",
+      category: "",
+      payment_method: "all"
+    });
+  };
+
+  // Add loading and error states
+  if (transactionsLoading || reportsLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto" />
+            <p className="mt-2">Loading accounting data...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (transactionsError || reportsError) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+            <p className="mt-2 text-destructive">
+              Error loading accounting data. Please try again later.
+            </p>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => {
+                queryClient.invalidateQueries({ queryKey: ["transactions", "financialReports"] });
+              }}
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -301,12 +384,13 @@ const Accounting = () => {
                     <Label htmlFor="type">Transaction Type *</Label>
                     <Select
                       value={newTransaction.type}
-                      onValueChange={(value) =>
+                      onValueChange={(value) => {
+                        const transactionType = value as "Income" | "Expense" | "Transfer";
                         setNewTransaction({
                           ...newTransaction,
-                          type: value,
-                        })
-                      }
+                          type: transactionType,
+                        });
+                      }}
                     >
                       <SelectTrigger id="type">
                         <SelectValue placeholder="Select type" />
@@ -378,17 +462,18 @@ const Accounting = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="paymentMethod">Payment Method</Label>
+                    <Label htmlFor="payment_method">Payment Method</Label>
                     <Select
-                      value={newTransaction.paymentMethod}
-                      onValueChange={(value) =>
+                      value={newTransaction.payment_method}
+                      onValueChange={(value) => {
+                        const payment_method = value as "Cash" | "Bank Transfer" | "Credit Card" | "UPI" | "Check";
                         setNewTransaction({
                           ...newTransaction,
-                          paymentMethod: value,
-                        })
-                      }
+                          payment_method: payment_method,
+                        });
+                      }}
                     >
-                      <SelectTrigger id="paymentMethod">
+                      <SelectTrigger id="payment_method">
                         <SelectValue placeholder="Select method" />
                       </SelectTrigger>
                       <SelectContent>
@@ -442,66 +527,46 @@ const Accounting = () => {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Income</CardTitle>
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${totalRevenue.toLocaleString()}
+              ${financialReports.profitAndLoss.income.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium flex items-center">
-                +{incomeGrowthRate.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
-              </span> from last month
-            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">New Customers</CardTitle>
-            <Building className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              ${financialReports.profitAndLoss.expenses.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              +{currentMonthCustomers}
+              ${financialReports.profitAndLoss.profit.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium flex items-center">
-                +{customerGrowthRate.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
-              </span> from last month
-            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Sales</CardTitle>
-            <TrendingUp className="h-4 w-4 text-indigo-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-indigo-600">
-              +{currentMonthSales.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium flex items-center">
-                +{salesGrowthRate.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
-              </span> from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <CardTitle className="text-sm font-medium">Net Cash Flow</CardTitle>
             <CreditCard className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              +{currentWeekUsers}
+              ${financialReports.cashFlow.netFlow.toLocaleString()}
             </div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500 font-medium flex items-center">
-                +{userGrowthRate.toFixed(1)}% <ArrowUpRight className="h-3 w-3 ml-1" />
-              </span> from last week
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -520,10 +585,97 @@ const Accounting = () => {
               <div className="flex justify-between items-center">
                 <CardTitle>Recent Transactions</CardTitle>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filter
-                  </Button>
+                  <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Filter className="h-4 w-4 mr-2" />
+                        Filter
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Filter Transactions</DialogTitle>
+                        <DialogDescription>
+                          Apply filters to find specific transactions.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="startDate">Start Date</Label>
+                            <Input
+                              id="startDate"
+                              type="date"
+                              value={filters.startDate}
+                              onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="endDate">End Date</Label>
+                            <Input
+                              id="endDate"
+                              type="date"
+                              value={filters.endDate}
+                              onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="type">Transaction Type</Label>
+                          <Select
+                            value={filters.type}
+                            onValueChange={(value) => setFilters({ ...filters, type: value })}
+                          >
+                            <SelectTrigger id="type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Types</SelectItem>
+                              <SelectItem value="Income">Income</SelectItem>
+                              <SelectItem value="Expense">Expense</SelectItem>
+                              <SelectItem value="Transfer">Transfer</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="category">Category</Label>
+                          <Input
+                            id="category"
+                            placeholder="Filter by category"
+                            value={filters.category}
+                            onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="payment_method">Payment Method</Label>
+                          <Select
+                            value={filters.payment_method}
+                            onValueChange={(value) => setFilters({ ...filters, payment_method: value })}
+                          >
+                            <SelectTrigger id="payment_method">
+                              <SelectValue placeholder="Select method" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Methods</SelectItem>
+                              <SelectItem value="Cash">Cash</SelectItem>
+                              <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                              <SelectItem value="Credit Card">Credit Card</SelectItem>
+                              <SelectItem value="UPI">UPI</SelectItem>
+                              <SelectItem value="Check">Check</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={resetFilters}>
+                          Reset Filters
+                        </Button>
+                        <Button onClick={() => setIsFilterOpen(false)}>
+                          Apply Filters
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                   <Button variant="outline" size="sm">
                     <Download className="h-4 w-4 mr-2" />
                     Export
@@ -542,15 +694,14 @@ const Accounting = () => {
                       <th className="text-left pb-3 font-medium">Amount</th>
                       <th className="text-left pb-3 font-medium">Type</th>
                       <th className="text-left pb-3 font-medium">Method</th>
+                      <th className="text-left pb-3 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((transaction) => (
+                    {filteredTransactions.map((transaction) => (
                       <tr key={transaction.id} className="border-b hover:bg-muted/50">
                         <td className="py-3 text-sm">
-                          {transaction.date instanceof Date && !isNaN(transaction.date.getTime())
-                            ? format(transaction.date, "MMM d, yyyy")
-                            : "Invalid Date"}
+                          {format(new Date(transaction.date), "MMM d, yyyy")}
                         </td>
                         <td className="py-3 text-sm max-w-[200px] truncate">
                           {transaction.description || "-"}
@@ -574,9 +725,26 @@ const Accounting = () => {
                             {transaction.type}
                           </Badge>
                         </td>
-                        <td className="py-3 text-sm">{transaction.paymentMethod}</td>
+                        <td className="py-3 text-sm">{transaction.payment_method}</td>
+                        <td className="py-3 text-sm">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteTransaction(transaction.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
                       </tr>
                     ))}
+                    {filteredTransactions.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                          No transactions found matching your filters.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -612,14 +780,16 @@ const Accounting = () => {
                 <TabsContent value="profit-loss">
                   <div className="h-[400px]">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={monthlyData}>
+                      <BarChart data={[
+                        { name: "Income", value: financialReports.profitAndLoss.income },
+                        { name: "Expenses", value: financialReports.profitAndLoss.expenses },
+                        { name: "Profit", value: financialReports.profitAndLoss.profit }
+                      ]}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="name" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="income" name="Income" fill="hsl(var(--primary))" />
-                        <Bar dataKey="expenses" name="Expenses" fill="hsl(var(--destructive))" />
-                        <Bar dataKey="profit" name="Profit" fill="hsl(var(--green-500))" />
+                        <Bar dataKey="value" fill="hsl(var(--primary))" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -629,42 +799,106 @@ const Accounting = () => {
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <div className="text-muted-foreground text-sm">Total Income</div>
-                        <div className="text-2xl font-bold text-green-600">$169,000</div>
+                        <div className="text-2xl font-bold text-green-600">
+                          ${financialReports.profitAndLoss.income.toLocaleString()}
+                        </div>
                       </div>
                       <div>
                         <div className="text-muted-foreground text-sm">Total Expenses</div>
-                        <div className="text-2xl font-bold text-red-600">$113,000</div>
+                        <div className="text-2xl font-bold text-red-600">
+                          ${financialReports.profitAndLoss.expenses.toLocaleString()}
+                        </div>
                       </div>
                       <div>
                         <div className="text-muted-foreground text-sm">Net Profit</div>
-                        <div className="text-2xl font-bold text-blue-600">$56,000</div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          ${financialReports.profitAndLoss.profit.toLocaleString()}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="balance-sheet">
-                  <div className="h-[400px] flex items-center justify-center">
-                    <div className="text-center">
-                      <Building className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-lg font-medium">Balance Sheet Report</h3>
-                      <p className="text-muted-foreground mt-2 max-w-md">
-                        View your company's financial position with assets, liabilities, and equity breakdown.
-                      </p>
-                      <Button className="mt-4">Generate Report</Button>
+                  <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: "Assets", value: financialReports.balanceSheet.assets },
+                        { name: "Liabilities", value: financialReports.balanceSheet.liabilities },
+                        { name: "Net Worth", value: financialReports.balanceSheet.netWorth }
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="hsl(var(--primary))" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="mt-6 border-t pt-4">
+                    <h3 className="text-lg font-medium mb-3">Summary</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-muted-foreground text-sm">Total Assets</div>
+                        <div className="text-2xl font-bold text-green-600">
+                          ${financialReports.balanceSheet.assets.toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-sm">Total Liabilities</div>
+                        <div className="text-2xl font-bold text-red-600">
+                          ${financialReports.balanceSheet.liabilities.toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-sm">Net Worth</div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          ${financialReports.balanceSheet.netWorth.toLocaleString()}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="cash-flow">
-                  <div className="h-[400px] flex items-center justify-center">
-                    <div className="text-center">
-                      <TrendingUp className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-lg font-medium">Cash Flow Statement</h3>
-                      <p className="text-muted-foreground mt-2 max-w-md">
-                        Track the flow of cash in and out of your business over a specific period.
-                      </p>
-                      <Button className="mt-4">Generate Report</Button>
+                  <div className="h-[400px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: "Cash Inflow", value: financialReports.cashFlow.inflow },
+                        { name: "Cash Outflow", value: financialReports.cashFlow.outflow },
+                        { name: "Net Cash Flow", value: financialReports.cashFlow.netFlow }
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="hsl(var(--primary))" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="mt-6 border-t pt-4">
+                    <h3 className="text-lg font-medium mb-3">Summary</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-muted-foreground text-sm">Cash Inflow</div>
+                        <div className="text-2xl font-bold text-green-600">
+                          ${financialReports.cashFlow.inflow.toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-sm">Cash Outflow</div>
+                        <div className="text-2xl font-bold text-red-600">
+                          ${financialReports.cashFlow.outflow.toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-sm">Net Cash Flow</div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          ${financialReports.cashFlow.netFlow.toLocaleString()}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
@@ -805,14 +1039,52 @@ const Accounting = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="h-[400px] flex items-center justify-center">
-                <div className="text-center">
-                  <DollarSign className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-lg font-medium">Tax Management</h3>
-                  <p className="text-muted-foreground mt-2 max-w-md">
-                    Manage your tax obligations, calculate taxes, and generate tax reports for compliance.
-                  </p>
-                  <Button className="mt-4">Generate Tax Report</Button>
+              <div className="grid gap-6">
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Income by Category</h3>
+                  <div className="grid gap-4">
+                    {Object.entries(financialReports.taxReport.incomeByCategory).map(([category, amount]) => (
+                      <div key={category} className="flex justify-between items-center p-4 border rounded-lg">
+                        <div>
+                          <div className="font-medium">{category}</div>
+                          <div className="text-sm text-muted-foreground">
+                            {(amount / financialReports.profitAndLoss.income * 100).toFixed(1)}% of total income
+                          </div>
+                        </div>
+                        <div className="text-lg font-bold">
+                          ${amount.toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-medium mb-4">Estimated Tax Liability</h3>
+                  <div className="grid gap-4">
+                    <div className="flex justify-between items-center p-4 border rounded-lg">
+                      <div>
+                        <div className="font-medium">Total Taxable Income</div>
+                        <div className="text-sm text-muted-foreground">
+                          Based on Indian tax slabs
+                        </div>
+                      </div>
+                      <div className="text-lg font-bold">
+                        ${financialReports.profitAndLoss.income.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center p-4 border rounded-lg">
+                      <div>
+                        <div className="font-medium">Estimated Tax</div>
+                        <div className="text-sm text-muted-foreground">
+                          Calculated using Indian tax rates
+                        </div>
+                      </div>
+                      <div className="text-lg font-bold text-red-600">
+                        ${financialReports.taxReport.estimatedTax.toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>

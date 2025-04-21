@@ -127,7 +127,7 @@ const orders = [
     amount: 3250.50,
     status: "completed",
     items: 5,
-    paymentMethod: "credit_card"
+    payment_method: "credit_card"
   },
   {
     id: "ORD-2023-002",
@@ -136,7 +136,7 @@ const orders = [
     amount: 1780.25,
     status: "processing",
     items: 3,
-    paymentMethod: "bank_transfer"
+    payment_method: "bank_transfer"
   },
   {
     id: "ORD-2023-003",
@@ -145,7 +145,7 @@ const orders = [
     amount: 4200.00,
     status: "completed",
     items: 7,
-    paymentMethod: "credit_card"
+    payment_method: "credit_card"
   },
   {
     id: "ORD-2023-004",
@@ -154,7 +154,7 @@ const orders = [
     amount: 950.75,
     status: "completed",
     items: 2,
-    paymentMethod: "credit_card"
+    payment_method: "credit_card"
   },
   {
     id: "ORD-2023-005",
@@ -163,7 +163,7 @@ const orders = [
     amount: 1500.00,
     status: "pending",
     items: 4,
-    paymentMethod: "paypal"
+    payment_method: "paypal"
   },
   {
     id: "ORD-2023-006",
@@ -172,7 +172,7 @@ const orders = [
     amount: 2800.50,
     status: "completed",
     items: 6,
-    paymentMethod: "bank_transfer"
+    payment_method: "bank_transfer"
   },
   {
     id: "ORD-2023-007",
@@ -181,7 +181,7 @@ const orders = [
     amount: 1200.00,
     status: "cancelled",
     items: 3,
-    paymentMethod: "credit_card"
+    payment_method: "credit_card"
   }
 ];
 
